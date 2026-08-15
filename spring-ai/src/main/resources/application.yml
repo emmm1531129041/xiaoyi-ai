@@ -1,0 +1,23 @@
+spring:
+  application:
+    name: spring-ai
+
+  ai:
+    openai:   # 改成 openai，因为 deepseek API 兼容 OpenAI
+      api-key: ${DEEPSEEK_API_KEY}
+      base-url: https://api.deepseek.com
+      chat:
+        options:
+          model: deepseek-v4-flash
+          temperature: 0.7
+
+server:
+  servlet:
+    encoding:
+      charset: UTF-8
+      enabled: true
+      force: true
+
+logging:
+  level:
+    org.springframework.ai.chat.client.advisor: DEBUG

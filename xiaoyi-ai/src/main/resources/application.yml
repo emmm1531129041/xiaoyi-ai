@@ -1,6 +1,6 @@
 spring:
   application:
-    name: spring-ai
+    name: xiaoyi-ai
 
   ai:
     openai:   # 改成 openai，因为 deepseek API 兼容 OpenAI
@@ -21,3 +21,4 @@ server:
 logging:
   level:
     org.springframework.ai.chat.client.advisor: DEBUG
+

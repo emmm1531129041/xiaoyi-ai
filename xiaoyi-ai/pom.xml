@@ -5,11 +5,11 @@
     <modelVersion>4.0.0</modelVersion>
     <parent>
         <groupId>org.example</groupId>
-        <artifactId>spring-ai-project</artifactId>
+        <artifactId>xiaoyi-ai-parent</artifactId>
         <version>1.0-SNAPSHOT</version>
     </parent>
 
-    <artifactId>spring-ai</artifactId>
+    <artifactId>xiaoyi-ai</artifactId>
 
     <properties>
         <maven.compiler.source>17</maven.compiler.source>

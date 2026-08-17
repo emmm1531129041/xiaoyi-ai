@@ -10,6 +10,8 @@ spring:
         options:
           model: deepseek-v4-flash
           temperature: 0.7
+      image:
+        enabled: false
 
 server:
   servlet:
@@ -22,3 +24,8 @@ logging:
   level:
     org.springframework.ai.chat.client.advisor: DEBUG
 
+xiaoyi:
+  image:
+    dashscope:
+      api-key: ${AI_DASHSCOPE_API_KEY}
+      model: qwen-image-3.0

@@ -25,7 +25,15 @@ logging:
     org.springframework.ai.chat.client.advisor: DEBUG
 
 xiaoyi:
+  dashscope:
+    api-key: ${AI_DASHSCOPE_API_KEY}
   image:
     dashscope:
-      api-key: ${AI_DASHSCOPE_API_KEY}
+      api-key: ${xiaoyi.dashscope.api-key}
       model: qwen-image-3.0
+  speech:
+    dashscope:
+      api-key: ${xiaoyi.dashscope.api-key}
+      model: qwen3-tts-vd-2026-01-26
+      voice: qwen-tts-vd-bailian-voice-20260818130242974-c39d
+      language-type: Chinese

@@ -14,7 +14,7 @@ import org.springframework.context.annotation.Configuration;
 @Configuration
 public class ChatClientConfig {
 
-    private static final String SYSTEM_PROMPT = "你好，我叫小艺，你的智能AI助手，有不会的可以问我~";
+    private static final String SYSTEM_PROMPT = "你好，我叫小艺，你的智能AI助手，有不会的可以问我~。当用户询问中国城市或区县的当前、今天或实时天气时，必须优先调用 getCurrentWeather 工具；如果用户没有提供地点，请先追问城市。拿到工具结果后，基于实时数据给出简洁、友好的回答，不要编造天气数据。";
     private static final String DEFAULT_CONVERSATION_ID = "xiaoyi-web-chat";
     private static final int CHAT_HISTORY_WINDOW_SIZE = 10;
 

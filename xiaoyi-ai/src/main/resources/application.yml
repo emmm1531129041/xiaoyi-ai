@@ -27,6 +27,9 @@ logging:
 xiaoyi:
   dashscope:
     api-key: ${AI_DASHSCOPE_API_KEY}
+  weather:
+    amap:
+      api-key: ${AMAP_WEB_SERVICE_API_KEY}
   image:
     dashscope:
       api-key: ${xiaoyi.dashscope.api-key}

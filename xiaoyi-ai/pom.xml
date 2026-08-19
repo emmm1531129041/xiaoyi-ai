@@ -37,6 +37,17 @@
             <artifactId>dashscope-sdk-java</artifactId>
             <version>2.22.27</version>
         </dependency>
+        <!-- Keep Victools' generator and Jackson module on the same version for Spring AI Tool schemas. -->
+        <dependency>
+            <groupId>com.github.victools</groupId>
+            <artifactId>jsonschema-generator</artifactId>
+            <version>4.37.0</version>
+        </dependency>
+        <dependency>
+            <groupId>com.github.victools</groupId>
+            <artifactId>jsonschema-module-jackson</artifactId>
+            <version>4.37.0</version>
+        </dependency>
 
     </dependencies>
 

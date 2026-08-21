@@ -2,7 +2,6 @@ const form = document.querySelector('#chat-form');
     const input = document.querySelector('#message');
     const messages = document.querySelector('#messages');
     const imageResults = document.querySelector('#image-results');
-    const weatherResults = document.querySelector('#weather-results');
     const sendButton = document.querySelector('#send-button');
     const newChatButton = document.querySelector('#new-chat');
     const conversationList = document.querySelector('#conversation-list');
@@ -321,51 +320,6 @@ const form = document.querySelector('#chat-form');
         imageResults.append(empty);
     }
 
-    function renderWeatherEmpty() {
-        weatherResults.replaceChildren();
-        const empty = document.createElement('div');
-        empty.className = 'weather-empty';
-        empty.innerHTML = '<strong>实时天气</strong>输入城市名，例如“杭州”或“北京市朝阳区”。';
-        weatherResults.append(empty);
-    }
-
-    function renderWeather(weather) {
-        weatherResults.replaceChildren();
-        const card = document.createElement('article');
-        card.className = 'weather-card';
-        card.innerHTML = `
-            <p class="weather-city">${weather.city} · 实时天气</p>
-            <div class="weather-summary"><span class="weather-condition">${weather.weather}</span><strong class="weather-temperature">${weather.temperature}°</strong></div>
-            <div class="weather-details">
-                <span class="weather-detail">风向风力<strong>${weather.windDirection} ${weather.windPower} 级</strong></span>
-                <span class="weather-detail">相对湿度<strong>${weather.humidity}%</strong></span>
-                <span class="weather-detail">数据来源<strong>高德天气</strong></span>
-            </div>
-            <p class="weather-time">数据发布时间：${weather.reportTime}</p>`;
-        weatherResults.append(card);
-    }
-
-    async function generateWeather(city) {
-        input.value = '';
-        input.disabled = true;
-        sendButton.disabled = true;
-        weatherResults.replaceChildren();
-        const loading = document.createElement('div');
-        loading.className = 'weather-empty';
-        loading.textContent = '正在查询实时天气…';
-        weatherResults.append(loading);
-        try {
-            const response = await fetch(`/weather/current?city=${encodeURIComponent(city)}`);
-            if (!response.ok) throw new Error(`请求失败：${response.status}`);
-            renderWeather(await response.json());
-        } catch (error) {
-            loading.textContent = `查询失败：${error.message}`;
-        } finally {
-            input.disabled = false;
-            sendButton.disabled = false;
-            input.focus();
-        }
-    }
     function addImageCard(prompt) {
         if (imageResults.querySelector('.image-empty')) imageResults.replaceChildren();
         const card = document.createElement('article');
@@ -415,6 +369,7 @@ const form = document.querySelector('#chat-form');
 
     async function refreshConversations() {
         const response = await fetch('/chat/conversations');
+        if (!response.ok) throw new Error(`加载会话失败：${response.status}`);
         const conversations = await response.json();
         renderConversations(conversations);
         return conversations;
@@ -460,16 +415,13 @@ const form = document.querySelector('#chat-form');
     function setMode(mode) {
         activeMode = mode;
         const imageMode = mode === 'image';
-        const weatherMode = mode === 'weather';
         document.body.classList.toggle('image-mode', imageMode);
-        document.body.classList.toggle('weather-mode', weatherMode);
-        messages.hidden = mode !== 'chat';
+        messages.hidden = imageMode;
         imageResults.hidden = !imageMode;
-        weatherResults.hidden = !weatherMode;
-        input.placeholder = imageMode ? '描述你想生成的图片' : weatherMode ? '输入城市名，例如：杭州' : '输入你的问题';
-        sendButton.innerHTML = imageMode ? '生成图片' : weatherMode ? '查询天气' : '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 19V5M6.5 10.5 12 5l5.5 5.5"/></svg>';
-        sendButton.setAttribute('aria-label', imageMode ? '生成图片' : weatherMode ? '查询天气' : '发送消息');
-        sendButton.title = imageMode ? '生成图片' : weatherMode ? '查询天气' : '发送消息';
+        input.placeholder = imageMode ? '描述你想生成的图片' : '问问XiaoYi';
+        sendButton.innerHTML = imageMode ? '生成图片' : '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 19V5M6.5 10.5 12 5l5.5 5.5"/></svg>';
+        sendButton.setAttribute('aria-label', imageMode ? '生成图片' : '发送消息');
+        sendButton.title = imageMode ? '生成图片' : '发送消息';
         modeButtons.forEach(button => button.classList.toggle('active', button.dataset.mode === mode));
         input.focus();
     }
@@ -552,13 +504,17 @@ const form = document.querySelector('#chat-form');
     form.addEventListener('submit', async (event) => {
         event.preventDefault();
         const question = input.value.trim();
-        if (!question || (activeMode === 'chat' && !activeConversationId)) return;
+if (!question) return;
+        if (activeMode === 'chat' && !activeConversationId) {
+            try {
+                await createConversation();
+            } catch (error) {
+                alert(`无法创建会话：${error.message}`);
+                return;
+            }
+        }
         if (activeMode === 'image') {
             await generateImage(question);
-            return;
-        }
-        if (activeMode === 'weather') {
-            await generateWeather(question);
             return;
         }
 
@@ -611,10 +567,14 @@ const form = document.querySelector('#chat-form');
 
     (async () => {
         renderImageEmpty();
-        renderWeatherEmpty();
-        const conversations = await refreshConversations();
-        const savedConversationId = localStorage.getItem('xiaoyi-active-conversation');
-        const current = conversations.find(item => item.id === savedConversationId) || conversations[0];
-        if (current) await selectConversation(current.id);
-        else await createConversation();
+        try {
+            const conversations = await refreshConversations();
+            const savedConversationId = localStorage.getItem('xiaoyi-active-conversation');
+            const current = conversations.find(item => item.id === savedConversationId) || conversations[0];
+            if (current) await selectConversation(current.id);
+            else await createConversation();
+        } catch (error) {
+            console.error('初始化会话失败：', error);
+            renderMessages([]);
+        }
     })();

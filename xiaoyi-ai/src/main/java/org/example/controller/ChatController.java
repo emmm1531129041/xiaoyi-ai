@@ -6,7 +6,6 @@ import org.example.dto.ChatResponse;
 import org.example.dto.ConversationMessage;
 import org.example.dto.ConversationSummary;
 import org.example.service.ConversationService;
-import org.example.service.WeatherService;
 import org.springframework.ai.chat.client.ChatClient;
 import org.springframework.ai.chat.client.advisor.AbstractChatMemoryAdvisor;
 import org.springframework.http.MediaType;
@@ -28,16 +27,11 @@ public class ChatController {
 
     private final ChatClient chatClient;
     private final ConversationService conversationService;
-    private final WeatherService weatherService;
 
-    public ChatController(ChatClient chatClient,
-                          ConversationService conversationService,
-                          WeatherService weatherService) {
+    public ChatController(ChatClient chatClient, ConversationService conversationService) {
         this.chatClient = chatClient;
         this.conversationService = conversationService;
-        this.weatherService = weatherService;
     }
-
     @PostMapping("/conversations")
     public ConversationSummary createConversation() {
         return conversationService.createConversation();
@@ -66,7 +60,6 @@ public class ChatController {
 
         String content = chatClient.prompt()
                 .user(message)
-                .tools(weatherService)
                 .advisors(advisor -> advisor.param(AbstractChatMemoryAdvisor.CHAT_MEMORY_CONVERSATION_ID_KEY,
                         conversationId))
                 .call()
@@ -87,7 +80,6 @@ public class ChatController {
         StringBuilder assistantResponse = new StringBuilder();
         return chatClient.prompt()
                 .user(message)
-                .tools(weatherService)
                 .advisors(advisor -> advisor.param(AbstractChatMemoryAdvisor.CHAT_MEMORY_CONVERSATION_ID_KEY,
                         conversationId))
                 .stream()

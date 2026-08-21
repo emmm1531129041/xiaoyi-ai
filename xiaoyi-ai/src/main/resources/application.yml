@@ -30,6 +30,9 @@ xiaoyi:
   weather:
     amap:
       api-key: ${AMAP_WEB_SERVICE_API_KEY}
+  search:
+    tavily:
+      api-key: ${TAVILY_API_KEY:}
   image:
     dashscope:
       api-key: ${xiaoyi.dashscope.api-key}

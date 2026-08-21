@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>XiaoYi · AI Assistant</title>
-    <link rel="stylesheet" href="/css/chat.css">
+    <link rel="stylesheet" href="/css/chat.css?v=20260821-2">
 </head>
 <body>
 <div class="app">
@@ -20,7 +20,7 @@
         <div class="mode-switch" role="tablist" aria-label="功能模式">
             <button class="mode-button active" type="button" data-mode="chat">聊天</button>
             <button class="mode-button" type="button" data-mode="image">生图</button>
-            <button class="mode-button" type="button" data-mode="weather">天气</button>
+
         </div>
         <div class="chat-history">
             <button id="new-chat" class="new-chat" type="button">＋ 新建会话</button>
@@ -32,14 +32,14 @@
     <main class="chat-panel">
         <section id="messages" aria-live="polite"></section>
         <section id="image-results" aria-live="polite" hidden></section>
-        <section id="weather-results" aria-live="polite" hidden></section>
+
         <form id="chat-form" class="composer">
-            <input id="message" name="message" placeholder="输入你的问题" autocomplete="off" required>
+            <input id="message" name="message" placeholder="问问XiaoYi" autocomplete="off" required>
             <button id="send-button" type="submit" aria-label="发送消息" title="发送消息"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 19V5M6.5 10.5 12 5l5.5 5.5"/></svg></button>
         </form>
 </main>
     <nav id="conversation-navigator" class="conversation-navigator" aria-label="对话导航" hidden></nav>
 </div>
-<script src="/js/chat.js" defer></script>
+<script src="/js/chat.js?v=20260821-2" defer></script>
 </body>
 </html>

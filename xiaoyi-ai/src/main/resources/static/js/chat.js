@@ -2,6 +2,13 @@ const form = document.querySelector('#chat-form');
     const input = document.querySelector('#message');
     const messages = document.querySelector('#messages');
     const imageResults = document.querySelector('#image-results');
+    const attachmentInput = document.querySelector('#attachment-input');
+    const attachmentButton = document.querySelector('#attachment-button');
+    const attachmentPreview = document.querySelector('#attachment-preview');
+    const attachmentPreviewImage = document.querySelector('#attachment-preview-image');
+    const attachmentLoading = document.querySelector('#attachment-loading');
+    const attachmentRemove = document.querySelector('#attachment-remove');
+    let attachmentPreviewUrl = null;
     const sendButton = document.querySelector('#send-button');
     const newChatButton = document.querySelector('#new-chat');
     const conversationList = document.querySelector('#conversation-list');
@@ -419,11 +426,84 @@ const form = document.querySelector('#chat-form');
         messages.hidden = imageMode;
         imageResults.hidden = !imageMode;
         input.placeholder = imageMode ? '描述你想生成的图片' : '问问XiaoYi';
+        attachmentButton.disabled = imageMode;
+        if (imageMode) clearAttachment();
         sendButton.innerHTML = imageMode ? '生成图片' : '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 19V5M6.5 10.5 12 5l5.5 5.5"/></svg>';
         sendButton.setAttribute('aria-label', imageMode ? '生成图片' : '发送消息');
         sendButton.title = imageMode ? '生成图片' : '发送消息';
         modeButtons.forEach(button => button.classList.toggle('active', button.dataset.mode === mode));
         input.focus();
+    }
+
+
+    function renderAttachmentPreview(file) {
+        if (attachmentPreviewUrl) URL.revokeObjectURL(attachmentPreviewUrl);
+        attachmentPreviewUrl = URL.createObjectURL(file);
+        attachmentPreviewImage.src = attachmentPreviewUrl;
+        attachmentPreview.hidden = false;
+        attachmentLoading.hidden = true;
+        attachmentButton.classList.add('attached');
+        attachmentButton.title = `已附加：${file.name}`;
+    }
+
+    function clearAttachment() {
+        attachmentInput.value = '';
+        if (attachmentPreviewUrl) URL.revokeObjectURL(attachmentPreviewUrl);
+        attachmentPreviewUrl = null;
+        attachmentPreviewImage.removeAttribute('src');
+        attachmentPreview.hidden = true;
+        attachmentLoading.hidden = true;
+        attachmentButton.classList.remove('attached');
+        attachmentButton.title = '添加图片识别';
+    }
+
+    async function recognizeAttachedImage(question) {
+        const file = attachmentInput.files[0];
+        if (!file) return;
+        const displayQuestion = question || '请识别我上传的图片';
+        if (messages.querySelector('.empty')) messages.replaceChildren();
+        const userBubble = addMessage('user', displayQuestion);
+        const sentPreview = document.createElement('img');
+        sentPreview.className = 'message-image-preview';
+        sentPreview.src = URL.createObjectURL(file);
+        sentPreview.alt = `已上传：${file.name}`;
+        userBubble.prepend(sentPreview);
+        input.value = '';
+        input.disabled = true;
+        attachmentButton.disabled = true;
+        attachmentRemove.disabled = true;
+        sendButton.disabled = true;
+        attachmentLoading.hidden = false;
+        attachmentPreview.classList.add('uploading');
+        stopCurrentSpeech();
+        const answer = addMessage('assistant');
+        showSpinner(answer);
+        const data = new FormData();
+        data.append('file', file);
+        data.append('prompt', displayQuestion);
+        try {
+            const response = await fetch(`/vision/recognize?conversationId=${encodeURIComponent(activeConversationId)}`, {
+                method: 'POST',
+                body: data
+            });
+            if (!response.ok) throw new Error(`请求失败：${response.status}`);
+            const result = await response.json();
+            answer.classList.remove('thinking');
+            answer.textContent = result.content;
+            addAssistantActions(answer, result.content);
+        } catch (error) {
+            answer.classList.remove('thinking');
+            answer.textContent = `图片识别失败：${error.message}`;
+        } finally {
+            attachmentPreview.classList.remove('uploading');
+            clearAttachment();
+            input.disabled = false;
+            attachmentButton.disabled = activeMode === 'image';
+            attachmentRemove.disabled = false;
+            sendButton.disabled = false;
+            input.focus();
+            await refreshConversations();
+        }
     }
     function showSpinner(container) {
         container.classList.add('thinking');
@@ -500,11 +580,21 @@ const form = document.querySelector('#chat-form');
     messages.addEventListener('scroll', updateActiveNavigatorMarker);
     newChatButton.addEventListener('click', createConversation);
     modeButtons.forEach(button => button.addEventListener('click', () => setMode(button.dataset.mode)));
+    attachmentButton.addEventListener('click', () => attachmentInput.click());
+    attachmentRemove.addEventListener('click', clearAttachment);
+    attachmentInput.addEventListener('change', () => {
+        const file = attachmentInput.files[0];
+        if (file) {
+            renderAttachmentPreview(file);
+            input.focus();
+        }
+    });
 
     form.addEventListener('submit', async (event) => {
         event.preventDefault();
         const question = input.value.trim();
-if (!question) return;
+        const attachedImage = attachmentInput.files[0];
+        if (!question && !attachedImage) return;
         if (activeMode === 'chat' && !activeConversationId) {
             try {
                 await createConversation();
@@ -514,10 +604,14 @@ if (!question) return;
             }
         }
         if (activeMode === 'image') {
+            if (!question) return;
             await generateImage(question);
             return;
         }
-
+        if (attachedImage) {
+            await recognizeAttachedImage(question);
+            return;
+        }
         if (messages.querySelector('.empty')) messages.replaceChildren();
         addMessage('user', question);
         input.value = '';

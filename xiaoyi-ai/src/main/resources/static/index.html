@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>XiaoYi · AI Assistant</title>
-    <link rel="stylesheet" href="/css/chat.css?v=20260821-2">
+    <link rel="stylesheet" href="/css/chat.css?v=20260822-4">
 </head>
 <body>
 <div class="app">
@@ -20,7 +20,6 @@
         <div class="mode-switch" role="tablist" aria-label="功能模式">
             <button class="mode-button active" type="button" data-mode="chat">聊天</button>
             <button class="mode-button" type="button" data-mode="image">生图</button>
-
         </div>
         <div class="chat-history">
             <button id="new-chat" class="new-chat" type="button">＋ 新建会话</button>
@@ -32,14 +31,24 @@
     <main class="chat-panel">
         <section id="messages" aria-live="polite"></section>
         <section id="image-results" aria-live="polite" hidden></section>
-
         <form id="chat-form" class="composer">
-            <input id="message" name="message" placeholder="问问XiaoYi" autocomplete="off" required>
-            <button id="send-button" type="submit" aria-label="发送消息" title="发送消息"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 19V5M6.5 10.5 12 5l5.5 5.5"/></svg></button>
+            <input id="attachment-input" type="file" accept="image/jpeg,image/png,image/webp,image/gif" hidden>
+            <div id="attachment-preview" class="attachment-preview" hidden>
+                <img id="attachment-preview-image" alt="待识别图片预览">
+                <div id="attachment-loading" class="attachment-loading" hidden><span class="spinner"></span></div>
+                <button id="attachment-remove" type="button" aria-label="移除图片" title="移除图片">×</button>
+            </div>
+            <div class="composer-row">
+                <button id="attachment-button" class="attachment-button" type="button" aria-label="添加图片识别" title="添加图片识别">
+                    <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>
+                </button>
+                <input id="message" name="message" placeholder="问问XiaoYi" autocomplete="off">
+                <button id="send-button" type="submit" aria-label="发送消息" title="发送消息"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 19V5M6.5 10.5 12 5l5.5 5.5"/></svg></button>
+            </div>
         </form>
-</main>
+    </main>
     <nav id="conversation-navigator" class="conversation-navigator" aria-label="对话导航" hidden></nav>
 </div>
-<script src="/js/chat.js?v=20260821-2" defer></script>
+<script src="/js/chat.js?v=20260822-3" defer></script>
 </body>
 </html>

@@ -68,3 +68,24 @@
     .navigator-preview-item:hover, .navigator-preview-item.active { background: #f1f1f1; }    .navigator-marker.user { background: #b7ade8; }
     .navigator-marker:hover { width: 32px; opacity: 1; }
     .navigator-marker.active { width: 32px; background: #202020; opacity: 1; } @media (max-width: 960px) { .conversation-navigator { display: none; } } @media (max-width: 760px) { body { height: auto; overflow: auto; } .app { height: auto; min-height: 100dvh; overflow: visible; flex-direction: column; } .sidebar { height: auto; overflow: visible; width: 100%; min-width: 0; max-width: none; flex: initial; gap: 12px; padding: 12px; } .sidebar-resizer { display: none; } .chat-history, .brand { display: none; } .mode-switch { width: 100%; } .chat-panel { min-height: calc(100dvh - 70px); } #messages, #image-results { padding: 24px 16px; } .composer { width: calc(100% - 24px); margin-bottom: 12px; } .bubble { max-width: 82%; } .delete-conversation { opacity: 1; } }
+    .attachment-button { display: grid; width: 32px; height: 32px; flex: 0 0 32px; place-items: center; border: 0; border-radius: 50%; color: #5f5b72; cursor: pointer; background: #f1f0f5; transition: color .15s ease, background .15s ease, transform .15s ease; }
+    .attachment-button:hover { color: #4f46e5; background: #e9e6ff; transform: scale(1.04); }
+    .attachment-button.attached { color: #ffffff; background: #5b4bda; }
+    .attachment-button:disabled { cursor: not-allowed; opacity: .38; transform: none; }
+    .attachment-button svg { width: 18px; height: 18px; fill: none; stroke: currentColor; stroke-linecap: round; stroke-width: 2.1; }
+    .attachment-name { max-width: 76px; overflow: hidden; color: #6259a9; font-size: 12px; text-overflow: ellipsis; white-space: nowrap; }
+    .composer { flex-direction: column; align-items: stretch; gap: 8px; }
+    .composer-row { display: flex; min-width: 0; gap: 10px; align-items: center; }
+    .attachment-preview { position: relative; width: 94px; height: 94px; overflow: hidden; border: 1px solid #e1dff0; border-radius: 13px; background: #f4f3f8; }
+    .attachment-preview[hidden] { display: none; }
+    .attachment-preview img { display: block; width: 100%; height: 100%; object-fit: cover; }
+    .attachment-preview button { position: absolute; top: 5px; right: 5px; display: grid; width: 22px; height: 22px; place-items: center; border: 0; border-radius: 50%; padding: 0; color: #ffffff; cursor: pointer; font-size: 17px; line-height: 1; background: rgb(24 24 27 / 88%); }
+    .attachment-preview button:disabled { cursor: wait; opacity: .6; }
+    .attachment-loading { position: absolute; inset: 0; display: grid; place-items: center; background: rgb(19 18 28 / 42%); }
+    .attachment-loading[hidden] { display: none; }
+    .attachment-loading .spinner { width: 26px; height: 26px; border-width: 3px; border-color: rgb(255 255 255 / 50%); border-top-color: #ffffff; }
+    .message.user .bubble .message-image-preview { display: block; width: min(230px, 100%); max-height: 230px; margin: 0 0 9px auto; border-radius: 10px; object-fit: cover; }
+    /* Keep assistant replies and the composer on one shared content rail. */
+    .message { width: min(100%, 760px); }
+    .message.assistant .bubble { width: 100%; max-width: 100%; }
+    .composer { width: min(760px, calc(100% - 48px)); margin: 0 auto 26px; }

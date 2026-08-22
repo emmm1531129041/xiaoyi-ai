@@ -4,6 +4,7 @@ import org.example.service.WeatherService;
 import org.example.service.WebSearchService;
 import org.springframework.ai.chat.client.ChatClient;
 import org.springframework.ai.chat.client.advisor.MessageChatMemoryAdvisor;
+import org.springframework.ai.chat.client.advisor.QuestionAnswerAdvisor;
 import org.springframework.ai.chat.client.advisor.SimpleLoggerAdvisor;
 import org.springframework.ai.chat.memory.ChatMemory;
 import org.springframework.ai.chat.memory.InMemoryChatMemory;
@@ -26,13 +27,17 @@ public class ChatClientConfig {
     }
 
     @Bean
-    ChatClient chatClient(ChatClient.Builder chatClientBuilder, ChatMemory chatMemory,
-                          WeatherService weatherService, WebSearchService webSearchService) {
+    ChatClient chatClient(ChatClient.Builder chatClientBuilder,
+                          ChatMemory chatMemory,
+                          WeatherService weatherService,
+                          WebSearchService webSearchService,
+                          QuestionAnswerAdvisor knowledgeBaseAdvisor) {
         return chatClientBuilder
                 .defaultSystem(SYSTEM_PROMPT)
                 .defaultTools(weatherService, webSearchService)
                 .defaultAdvisors(
                         new MessageChatMemoryAdvisor(chatMemory, DEFAULT_CONVERSATION_ID, CHAT_HISTORY_WINDOW_SIZE),
+                        knowledgeBaseAdvisor,
                         new SimpleLoggerAdvisor())
                 .build();
     }

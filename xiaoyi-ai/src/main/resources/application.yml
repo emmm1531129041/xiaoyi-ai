@@ -5,6 +5,15 @@ spring:
       max-request-size: 10MB
   application:
     name: xiaoyi-ai
+  datasource:
+    url: ${MYSQL_URL:jdbc:mysql://localhost:3306/xiaoyi_ai?useUnicode=true&characterEncoding=utf8&serverTimezone=Asia/Shanghai&createDatabaseIfNotExist=true}
+    username: ${MYSQL_USERNAME:root}
+    password: ${MYSQL_PASSWORD:}
+    driver-class-name: com.mysql.cj.jdbc.Driver
+  jpa:
+    hibernate:
+      ddl-auto: update
+    open-in-view: false
 
   ai:
     openai:   # 改成 openai，因为 deepseek API 兼容 OpenAI

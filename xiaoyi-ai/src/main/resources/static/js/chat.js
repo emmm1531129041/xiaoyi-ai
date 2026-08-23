@@ -6,6 +6,9 @@ const form = document.querySelector('#chat-form');
     const attachmentButton = document.querySelector('#attachment-button');
     const attachmentPreview = document.querySelector('#attachment-preview');
     const attachmentPreviewImage = document.querySelector('#attachment-preview-image');
+    const attachmentFilePreview = document.querySelector('#attachment-file-preview');
+    const attachmentFileType = document.querySelector('#attachment-file-type');
+    const attachmentFileName = document.querySelector('#attachment-file-name');
     const attachmentLoading = document.querySelector('#attachment-loading');
     const attachmentRemove = document.querySelector('#attachment-remove');
     let attachmentPreviewUrl = null;
@@ -436,12 +439,26 @@ const form = document.querySelector('#chat-form');
     }
 
 
+    function isImageAttachment(file) {
+        return file.type.startsWith('image/');
+    }
+
     function renderAttachmentPreview(file) {
         if (attachmentPreviewUrl) URL.revokeObjectURL(attachmentPreviewUrl);
-        attachmentPreviewUrl = URL.createObjectURL(file);
-        attachmentPreviewImage.src = attachmentPreviewUrl;
+        attachmentPreviewUrl = null;
         attachmentPreview.hidden = false;
         attachmentLoading.hidden = true;
+        attachmentPreviewImage.hidden = !isImageAttachment(file);
+        attachmentFilePreview.hidden = isImageAttachment(file);
+        if (isImageAttachment(file)) {
+            attachmentPreviewUrl = URL.createObjectURL(file);
+            attachmentPreviewImage.src = attachmentPreviewUrl;
+        } else {
+            attachmentPreviewImage.removeAttribute('src');
+            attachmentFileType.textContent = file.name.split('.').pop().toUpperCase();
+            attachmentFileName.textContent = file.name;
+            attachmentFileName.title = file.name;
+        }
         attachmentButton.classList.add('attached');
         attachmentButton.title = `已附加：${file.name}`;
     }
@@ -451,23 +468,44 @@ const form = document.querySelector('#chat-form');
         if (attachmentPreviewUrl) URL.revokeObjectURL(attachmentPreviewUrl);
         attachmentPreviewUrl = null;
         attachmentPreviewImage.removeAttribute('src');
+        attachmentPreviewImage.hidden = false;
+        attachmentFilePreview.hidden = true;
+        attachmentFileType.textContent = '';
+        attachmentFileName.textContent = '';
         attachmentPreview.hidden = true;
         attachmentLoading.hidden = true;
         attachmentButton.classList.remove('attached');
-        attachmentButton.title = '添加图片识别';
+        attachmentButton.title = '添加附件';
     }
 
-    async function recognizeAttachedImage(question) {
+    function addDocumentAttachmentToBubble(bubble, file) {
+        const documentPreview = document.createElement('div');
+        documentPreview.className = 'message-document-preview';
+        const type = document.createElement('strong');
+        type.textContent = file.name.split('.').pop().toUpperCase();
+        const name = document.createElement('span');
+        name.textContent = file.name;
+        name.title = file.name;
+        documentPreview.append(type, name);
+        bubble.prepend(documentPreview);
+    }
+
+    async function analyzeAttachment(question) {
         const file = attachmentInput.files[0];
         if (!file) return;
-        const displayQuestion = question || '请识别我上传的图片';
+        const imageAttachment = isImageAttachment(file);
+        const displayQuestion = question || (imageAttachment ? '请识别我上传的图片' : '请概括这份文档的重点');
         if (messages.querySelector('.empty')) messages.replaceChildren();
         const userBubble = addMessage('user', displayQuestion);
-        const sentPreview = document.createElement('img');
-        sentPreview.className = 'message-image-preview';
-        sentPreview.src = URL.createObjectURL(file);
-        sentPreview.alt = `已上传：${file.name}`;
-        userBubble.prepend(sentPreview);
+        if (imageAttachment) {
+            const sentPreview = document.createElement('img');
+            sentPreview.className = 'message-image-preview';
+            sentPreview.src = URL.createObjectURL(file);
+            sentPreview.alt = `已上传：${file.name}`;
+            userBubble.prepend(sentPreview);
+        } else {
+            addDocumentAttachmentToBubble(userBubble, file);
+        }
         input.value = '';
         input.disabled = true;
         attachmentButton.disabled = true;
@@ -481,20 +519,42 @@ const form = document.querySelector('#chat-form');
         const data = new FormData();
         data.append('file', file);
         data.append('prompt', displayQuestion);
+        const endpoint = imageAttachment ? '/vision/recognize' : '/documents/analyze';
+        const failureLabel = imageAttachment ? '图片识别' : '文档分析';
+        let receivedContent = false;
+        let answerText = null;
         try {
-            const response = await fetch(`/vision/recognize?conversationId=${encodeURIComponent(activeConversationId)}`, {
+            const response = await fetch(`${endpoint}?conversationId=${encodeURIComponent(activeConversationId)}`, {
                 method: 'POST',
                 body: data
             });
-            if (!response.ok) throw new Error(`请求失败：${response.status}`);
-            const result = await response.json();
-            answer.classList.remove('thinking');
-            answer.textContent = result.content;
-            addAssistantActions(answer, result.content);
+            if (!response.ok || !response.body) throw new Error(`请求失败：${response.status}`);
+            const reader = response.body.getReader();
+            const decoder = new TextDecoder();
+            let buffer = '';
+            while (true) {
+                const { done, value } = await reader.read();
+                if (value) buffer += decoder.decode(value, { stream: true });
+                if (done) buffer += decoder.decode();
+                buffer = appendSseEvents(buffer, (content) => {
+                    if (!receivedContent) {
+                        answer.classList.remove('thinking');
+                        answer.replaceChildren();
+                        answerText = document.createElement('span');
+                        answerText.className = 'assistant-text';
+                        answer.append(answerText);
+                        receivedContent = true;
+                    }
+                    answerText.textContent += content;
+                    messages.scrollTop = messages.scrollHeight;
+                });
+                if (done) break;
+            }
         } catch (error) {
             answer.classList.remove('thinking');
-            answer.textContent = `图片识别失败：${error.message}`;
+            answer.textContent = `${failureLabel}失败：${error.message}`;
         } finally {
+            if (receivedContent) addAssistantActions(answer, () => answerText.textContent);
             attachmentPreview.classList.remove('uploading');
             clearAttachment();
             input.disabled = false;
@@ -593,8 +653,8 @@ const form = document.querySelector('#chat-form');
     form.addEventListener('submit', async (event) => {
         event.preventDefault();
         const question = input.value.trim();
-        const attachedImage = attachmentInput.files[0];
-        if (!question && !attachedImage) return;
+        const attachedFile = attachmentInput.files[0];
+        if (!question && !attachedFile) return;
         if (activeMode === 'chat' && !activeConversationId) {
             try {
                 await createConversation();
@@ -608,8 +668,8 @@ const form = document.querySelector('#chat-form');
             await generateImage(question);
             return;
         }
-        if (attachedImage) {
-            await recognizeAttachedImage(question);
+        if (attachedFile) {
+            await analyzeAttachment(question);
             return;
         }
         if (messages.querySelector('.empty')) messages.replaceChildren();

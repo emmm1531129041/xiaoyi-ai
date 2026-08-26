@@ -8,6 +8,6 @@ public class XiaoyiAiApplication {
 
     public static void main(String[] args) {
         SpringApplication.run(XiaoyiAiApplication.class, args);
-        System.out.println("🚀 小艺 AI 启动成功！");
+        System.out.println("🚀 小艺 AI 启动成功 ！");
     }
 }

@@ -63,6 +63,17 @@ public class DocumentAnalysisService {
                 textForAnalysis, truncated);
     }
 
+    public List<ExtractedDocument> extract(List<MultipartFile> files) throws IOException {
+        if (files == null || files.isEmpty()) {
+            throw new IllegalArgumentException("请先选择至少一个文档");
+        }
+        java.util.ArrayList<ExtractedDocument> documents = new java.util.ArrayList<>();
+        for (MultipartFile file : files) {
+            documents.add(extract(file));
+        }
+        return List.copyOf(documents);
+    }
+
     private String extensionOf(String filename) {
         if (filename == null) {
             return "";

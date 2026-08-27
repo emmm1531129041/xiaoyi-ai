@@ -44,6 +44,8 @@ logging:
     org.springframework.ai.chat.client.advisor: DEBUG
 
 xiaoyi:
+  storage:
+    upload-dir: E:/my-first-web/picture
   dashscope:
     api-key: ${AI_DASHSCOPE_API_KEY}
   knowledge:

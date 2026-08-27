@@ -19,6 +19,7 @@ import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.nio.charset.StandardCharsets;
+import java.util.ArrayList;
 import java.util.Base64;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -69,6 +70,22 @@ public class VisionRecognitionService {
         return stream(file.getBytes(), file.getContentType(), prompt);
     }
 
+    /** Streams one or more images in one compatible DashScope request. */
+    public Flux<String> stream(List<MultipartFile> files, String prompt) throws IOException {
+        if (files == null || files.isEmpty()) {
+            throw new IllegalArgumentException("请先选择至少一张图片");
+        }
+        List<VisualImage> images = new ArrayList<>();
+        for (MultipartFile file : files) {
+            if (file == null || file.isEmpty()) {
+                throw new IllegalArgumentException("图片内容为空");
+            }
+            byte[] bytes = file.getBytes();
+            validateImage(bytes, file.getContentType());
+            images.add(new VisualImage(bytes, file.getContentType()));
+        }
+        return streamVisualImages(images, prompt);
+    }
     /**
      * Used by the knowledge-base bootstrapper for default image resources.
      */
@@ -135,6 +152,53 @@ public class VisionRecognitionService {
         }));
     }
 
+    private Flux<String> streamVisualImages(List<VisualImage> images, String prompt) {
+        return Flux.create(sink -> CompletableFuture.runAsync(() -> {
+            try {
+                String requestBody = objectMapper.writeValueAsString(buildRequest(images, prompt, true));
+                HttpRequest request = HttpRequest.newBuilder(URI.create(VISION_API_URL))
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + apiKey)
+                        .header(HttpHeaders.CONTENT_TYPE, MediaType.APPLICATION_JSON_VALUE)
+                        .header(HttpHeaders.ACCEPT, MediaType.TEXT_EVENT_STREAM_VALUE)
+                        .POST(HttpRequest.BodyPublishers.ofString(requestBody, StandardCharsets.UTF_8))
+                        .build();
+                HttpResponse<Stream<String>> response = httpClient.send(request, HttpResponse.BodyHandlers.ofLines());
+                if (response.statusCode() < 200 || response.statusCode() >= 300) {
+                    try (Stream<String> lines = response.body()) {
+                        String errorBody = lines.reduce("", String::concat);
+                        sink.error(new IllegalStateException("视觉识别服务调用失败（HTTP " + response.statusCode() + "）：" + errorBody));
+                    }
+                    return;
+                }
+                try (Stream<String> lines = response.body()) {
+                    lines.takeWhile(line -> !sink.isCancelled()).forEach(line -> {
+                        String content = parseStreamChunk(line);
+                        if (!content.isEmpty()) sink.next(content);
+                    });
+                }
+                sink.complete();
+            } catch (Exception exception) {
+                sink.error(new IllegalStateException("视觉识别流式调用失败：" + exception.getMessage(), exception));
+            }
+        }));
+    }
+
+    private Map<String, Object> buildRequest(List<VisualImage> images, String prompt, boolean stream) {
+        String instruction = prompt == null || prompt.isBlank() ? DEFAULT_PROMPT : prompt.trim();
+        List<Map<String, Object>> content = new ArrayList<>();
+        content.add(Map.of("type", "text", "text", instruction));
+        for (VisualImage image : images) {
+            String imageDataUrl = "data:" + image.contentType() + ";base64," + Base64.getEncoder().encodeToString(image.bytes());
+            content.add(Map.of("type", "image_url", "image_url", Map.of("url", imageDataUrl), "max_pixels", 1_310_720));
+        }
+        Map<String, Object> request = new LinkedHashMap<>();
+        request.put("model", model);
+        request.put("messages", List.of(
+                Map.of("role", "system", "content", "你是小艺的视觉识别模块。只根据图片中可见的信息回答；文字模糊时请明确说明。"),
+                Map.of("role", "user", "content", content)));
+        request.put("stream", stream);
+        return request;
+    }
     private Map<String, Object> buildRequest(byte[] imageBytes, String contentType, String prompt, boolean stream) {
         String instruction = prompt == null || prompt.isBlank() ? DEFAULT_PROMPT : prompt.trim();
         String imageDataUrl = "data:" + contentType + ";base64," + Base64.getEncoder().encodeToString(imageBytes);
@@ -150,6 +214,9 @@ public class VisionRecognitionService {
                 Map.of("role", "user", "content", List.of(textContent, imageContent))));
         request.put("stream", stream);
         return request;
+    }
+
+    private record VisualImage(byte[] bytes, String contentType) {
     }
 
     private String parseStreamChunk(String line) {

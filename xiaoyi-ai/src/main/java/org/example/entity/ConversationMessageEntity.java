@@ -44,6 +44,10 @@ public class ConversationMessageEntity {
         this.createdAt = createdAt;
     }
 
+    public Long getId() {
+        return id;
+    }
+
     public String getConversationId() {
         return conversationId;
     }

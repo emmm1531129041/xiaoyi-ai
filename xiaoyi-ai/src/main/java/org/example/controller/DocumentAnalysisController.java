@@ -62,6 +62,5 @@ public class DocumentAnalysisController {
                 .content()
                 .doOnNext(assistantResponse::append)
                 .doOnComplete(() -> conversationService.addAssistantMessage(conversationId, assistantResponse.toString()));
-
     }
 }

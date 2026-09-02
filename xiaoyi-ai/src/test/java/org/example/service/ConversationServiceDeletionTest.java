@@ -25,8 +25,9 @@ class ConversationServiceDeletionTest {
         ConversationMessageRepository messageRepository = mock(ConversationMessageRepository.class);
         ConversationAttachmentRepository attachmentRepository = mock(ConversationAttachmentRepository.class);
         AttachmentStorageService attachmentStorageService = mock(AttachmentStorageService.class);
+        ConversationMemoryService conversationMemoryService = mock(ConversationMemoryService.class);
         ConversationService service = new ConversationService(chatMemory, conversationRepository, messageRepository,
-                attachmentRepository, attachmentStorageService);
+                attachmentRepository, attachmentStorageService, conversationMemoryService);
 
         ConversationEntity conversation = new ConversationEntity("conversation-1", "测试", Instant.now(), Instant.now());
         ConversationAttachmentEntity attachment = new ConversationAttachmentEntity("conversation-1", 1L,

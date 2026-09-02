@@ -6,6 +6,7 @@ import org.example.dto.ChatResponse;
 import org.example.dto.ConversationMessage;
 import org.example.dto.ConversationSummary;
 import org.example.service.ConversationService;
+import org.example.service.ConversationMemoryService;
 import org.springframework.ai.chat.client.ChatClient;
 import org.springframework.ai.chat.client.advisor.AbstractChatMemoryAdvisor;
 import org.springframework.http.MediaType;
@@ -27,10 +28,13 @@ public class ChatController {
 
     private final ChatClient chatClient;
     private final ConversationService conversationService;
+    private final ConversationMemoryService conversationMemoryService;
 
-    public ChatController(ChatClient chatClient, ConversationService conversationService) {
+    public ChatController(ChatClient chatClient, ConversationService conversationService,
+                          ConversationMemoryService conversationMemoryService) {
         this.chatClient = chatClient;
         this.conversationService = conversationService;
+        this.conversationMemoryService = conversationMemoryService;
     }
     @PostMapping("/conversations")
     public ConversationSummary createConversation() {
@@ -56,6 +60,7 @@ public class ChatController {
     public ChatResponse chat(@RequestParam String message,
                              @RequestParam(defaultValue = "default") String conversationId) {
         conversationService.ensureConversation(conversationId);
+        conversationMemoryService.restoreIfNeeded(conversationId);
         conversationService.addUserMessage(conversationId, message);
 
         String content = chatClient.prompt()
@@ -75,6 +80,7 @@ public class ChatController {
     public Flux<String> streamChat(@RequestParam String message,
                                    @RequestParam(defaultValue = "default") String conversationId) {
         conversationService.ensureConversation(conversationId);
+        conversationMemoryService.restoreIfNeeded(conversationId);
         conversationService.addUserMessage(conversationId, message);
 
         StringBuilder assistantResponse = new StringBuilder();

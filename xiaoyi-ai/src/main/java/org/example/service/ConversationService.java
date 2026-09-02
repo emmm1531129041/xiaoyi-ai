@@ -37,17 +37,20 @@ public class ConversationService {
     private final ConversationMessageRepository messageRepository;
     private final ConversationAttachmentRepository attachmentRepository;
     private final AttachmentStorageService attachmentStorageService;
+    private final ConversationMemoryService conversationMemoryService;
 
     public ConversationService(ChatMemory chatMemory,
                                ConversationRepository conversationRepository,
                                ConversationMessageRepository messageRepository,
                                ConversationAttachmentRepository attachmentRepository,
-                               AttachmentStorageService attachmentStorageService) {
+                               AttachmentStorageService attachmentStorageService,
+                               ConversationMemoryService conversationMemoryService) {
         this.chatMemory = chatMemory;
         this.conversationRepository = conversationRepository;
         this.messageRepository = messageRepository;
         this.attachmentRepository = attachmentRepository;
         this.attachmentStorageService = attachmentStorageService;
+        this.conversationMemoryService = conversationMemoryService;
     }
 
     @Transactional
@@ -129,6 +132,7 @@ public class ConversationService {
         messageRepository.deleteByConversationId(conversationId);
         conversationRepository.delete(conversation);
         chatMemory.clear(conversationId);
+        conversationMemoryService.forget(conversationId);
     }
 
     private ConversationMessageEntity addMessage(ConversationEntity conversation, String role, String content) {

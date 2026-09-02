@@ -98,6 +98,37 @@ const form = document.querySelector('#chat-form');
     }
     let activeConversationId = null;
     let activeMode = 'chat';
+    const conversationScrollStorageKey = 'xiaoyi-conversation-scroll-positions';
+    const conversationScrollPositions = (() => {
+        try {
+            return JSON.parse(localStorage.getItem(conversationScrollStorageKey) || '{}');
+        } catch (error) {
+            return {};
+        }
+    })();
+
+    function saveConversationScrollPositions() {
+        localStorage.setItem(conversationScrollStorageKey, JSON.stringify(conversationScrollPositions));
+    }
+
+    function rememberConversationScrollPosition() {
+        if (!activeConversationId || document.body.classList.contains('image-mode')) return;
+        conversationScrollPositions[activeConversationId] = messages.scrollTop;
+        saveConversationScrollPositions();
+    }
+
+    function restoreConversationScrollPosition(conversationId) {
+        if (!Object.hasOwn(conversationScrollPositions, conversationId)) return;
+        const savedPosition = Number(conversationScrollPositions[conversationId]);
+        const maximumScrollTop = Math.max(0, messages.scrollHeight - messages.clientHeight);
+        const previousScrollBehavior = messages.style.scrollBehavior;
+        messages.style.scrollBehavior = 'auto';
+        messages.scrollTop = Number.isFinite(savedPosition)
+            ? Math.min(Math.max(savedPosition, 0), maximumScrollTop)
+            : 0;
+        messages.style.scrollBehavior = previousScrollBehavior;
+        updateActiveNavigatorMarker();
+    }
 
     function escapeHtml(value) {
         return value.replace(/[&<>"]/g, character => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[character]);
@@ -138,7 +169,7 @@ const form = document.querySelector('#chat-form');
         bubble.append(chip);
     }
 
-    function addMessage(role, content = '', createdAt = null, attachments = []) {
+    function addMessage(role, content = '', createdAt = null, attachments = [], shouldScroll = true) {
         const message = document.createElement('div');
         message.className = `message ${role}`;
         const bubble = document.createElement('div');
@@ -181,7 +212,7 @@ const form = document.querySelector('#chat-form');
         }
 
         messages.append(message);
-        messages.scrollTop = messages.scrollHeight;
+        if (shouldScroll) messages.scrollTop = messages.scrollHeight;
         scheduleConversationNavigator();
         return bubble;
     }
@@ -386,7 +417,7 @@ const form = document.querySelector('#chat-form');
             scheduleConversationNavigator();
             return;
         }
-        history.forEach(item => addMessage(item.role, item.content, item.createdAt, item.attachments));
+        history.forEach(item => addMessage(item.role, item.content, item.createdAt, item.attachments, false));
         scheduleConversationNavigator();
     }
 
@@ -486,14 +517,18 @@ const form = document.querySelector('#chat-form');
     }
 
     async function selectConversation(conversationId) {
+        if (conversationId === activeConversationId) return;
+        rememberConversationScrollPosition();
         activeConversationId = conversationId;
         localStorage.setItem('xiaoyi-active-conversation', conversationId);
         const response = await fetch(`/chat/conversations/${encodeURIComponent(conversationId)}/messages`);
         renderMessages(await response.json());
+        restoreConversationScrollPosition(conversationId);
         await refreshConversations();
     }
 
     async function createConversation() {
+        rememberConversationScrollPosition();
         const response = await fetch('/chat/conversations', { method: 'POST' });
         const conversation = await response.json();
         activeConversationId = conversation.id;
@@ -511,6 +546,8 @@ const form = document.querySelector('#chat-form');
             return;
         }
 
+        delete conversationScrollPositions[conversationId];
+        saveConversationScrollPositions();
         const conversations = await refreshConversations();
         if (conversationId !== activeConversationId) return;
 
@@ -732,7 +769,10 @@ const form = document.querySelector('#chat-form');
         }
     }
 
-    messages.addEventListener('scroll', updateActiveNavigatorMarker);
+    messages.addEventListener('scroll', () => {
+        rememberConversationScrollPosition();
+        updateActiveNavigatorMarker();
+    });
     newChatButton.addEventListener('click', createConversation);
     modeButtons.forEach(button => button.addEventListener('click', () => setMode(button.dataset.mode)));
     attachmentButton.addEventListener('click', () => attachmentInput.click());

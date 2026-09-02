@@ -1,6 +1,7 @@
 package org.example.controller;
 
 import org.example.service.ConversationService;
+import org.example.service.ConversationMemoryService;
 import org.example.service.DocumentAnalysisService;
 import org.springframework.ai.chat.client.ChatClient;
 import org.springframework.ai.chat.client.advisor.AbstractChatMemoryAdvisor;
@@ -23,13 +24,16 @@ public class DocumentAnalysisController {
     private final DocumentAnalysisService documentAnalysisService;
     private final ChatClient chatClient;
     private final ConversationService conversationService;
+    private final ConversationMemoryService conversationMemoryService;
 
     public DocumentAnalysisController(DocumentAnalysisService documentAnalysisService,
                                       ChatClient chatClient,
-                                      ConversationService conversationService) {
+                                      ConversationService conversationService,
+                                      ConversationMemoryService conversationMemoryService) {
         this.documentAnalysisService = documentAnalysisService;
         this.chatClient = chatClient;
         this.conversationService = conversationService;
+        this.conversationMemoryService = conversationMemoryService;
     }
 
     @PostMapping(value = "/analyze", consumes = MediaType.MULTIPART_FORM_DATA_VALUE,
@@ -40,6 +44,7 @@ public class DocumentAnalysisController {
         List<DocumentAnalysisService.ExtractedDocument> documents = documentAnalysisService.extract(files);
         String question = prompt == null || prompt.isBlank() ? "请概括这些文档的重点" : prompt.trim();
         conversationService.ensureConversation(conversationId);
+        conversationMemoryService.restoreIfNeeded(conversationId);
         conversationService.addUserMessageWithAttachments(conversationId, "[文档分析] " + question, files);
 
         String documentContext = documents.stream()

@@ -14,6 +14,12 @@ spring:
     hibernate:
       ddl-auto: update
     open-in-view: false
+  data:
+    redis:
+      host: 127.0.0.1
+      port: 6379
+      username: default
+      password: ${XIAOYI_REDIS_PASSWORD}
 
   ai:
     openai:   # 改成 openai，因为 deepseek API 兼容 OpenAI
@@ -31,6 +37,13 @@ spring:
           dimensions: 1024
       image:
         enabled: false
+    vectorstore:
+      redis:
+        initialize-schema: true
+        index-name: xiaoyi-knowledge-index
+        prefix: "xiaoyi:knowledge:"
+        distance-metric: COSINE
+        vector-algorithm: HNSW
 
 server:
   servlet:
@@ -49,10 +62,10 @@ xiaoyi:
   dashscope:
     api-key: ${AI_DASHSCOPE_API_KEY}
   knowledge:
-    store-path: ./data/xiaoyi-vectors.json
+    legacy-store-path: ./data/xiaoyi-vectors.json
     bootstrap:
       enabled: true
-      state-path: ./data/xiaoyi-knowledge-sources.txt
+      state-path: ./data/xiaoyi-redis-knowledge-sources.txt
   weather:
     amap:
       api-key: ${AMAP_WEB_SERVICE_API_KEY}

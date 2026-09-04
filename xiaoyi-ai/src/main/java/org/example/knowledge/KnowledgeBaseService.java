@@ -2,43 +2,31 @@ package org.example.knowledge;
 
 import org.springframework.ai.document.Document;
 import org.springframework.ai.transformer.splitter.TokenTextSplitter;
-import org.springframework.ai.vectorstore.SimpleVectorStore;
-import org.springframework.beans.factory.annotation.Value;
+import org.springframework.ai.vectorstore.VectorStore;
 import org.springframework.stereotype.Service;
 
-import java.io.IOException;
-import java.nio.file.Files;
-import java.nio.file.Path;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 
 /**
- * Implements the Transform and Load stages of XiaoYi's knowledge-base pipeline.
+ * Implements the Transform and Load stages of XiaoYi's Redis-backed knowledge-base pipeline.
  */
 @Service
 public class KnowledgeBaseService {
 
-    private final SimpleVectorStore vectorStore;
+    private final VectorStore vectorStore;
     private final TokenTextSplitter textSplitter;
-    private final Path storePath;
 
-    public KnowledgeBaseService(SimpleVectorStore vectorStore,
-                                TokenTextSplitter textSplitter,
-                                @Value("${xiaoyi.knowledge.store-path}") String storePath) {
+    public KnowledgeBaseService(VectorStore vectorStore, TokenTextSplitter textSplitter) {
         this.vectorStore = vectorStore;
         this.textSplitter = textSplitter;
-        this.storePath = Path.of(storePath);
-    }
-
-    public boolean hasSnapshot() {
-        return Files.isRegularFile(storePath) && storePath.toFile().length() > 0;
     }
 
     /**
      * T: split extracted Documents into retrieval-sized chunks.
-     * L: embed each chunk and save it into SimpleVectorStore's local JSON snapshot.
+     * L: embed each chunk and persist it in Redis Vector Store.
      */
     public synchronized KnowledgeIndexResult index(String sourceName, List<Document> extractedDocuments) {
         List<Document> documents = normalize(sourceName, extractedDocuments);
@@ -48,7 +36,6 @@ public class KnowledgeBaseService {
 
         List<Document> chunks = textSplitter.split(documents);
         vectorStore.add(chunks);
-        saveSnapshot();
         return new KnowledgeIndexResult(sourceName, chunks.size());
     }
 
@@ -65,17 +52,5 @@ public class KnowledgeBaseService {
             documents.add(new Document(document.getText(), metadata));
         }
         return documents;
-    }
-
-    private void saveSnapshot() {
-        try {
-            Path parent = storePath.getParent();
-            if (parent != null) {
-                Files.createDirectories(parent);
-            }
-            vectorStore.save(storePath.toFile());
-        } catch (IOException exception) {
-            throw new IllegalStateException("知识库快照保存失败", exception);
-        }
     }
 }

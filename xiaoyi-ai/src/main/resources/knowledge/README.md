@@ -6,4 +6,4 @@
 - 文本：`.txt`、`.md`、`.csv`、`.json`
 - 文档：`.pdf`、`.doc`、`.docx`、`.ppt`、`.pptx`、`.html`（由 Apache Tika 提取）
 
-首次成功入库后，向量会保存到项目根目录的 `data/xiaoyi-vectors.json`。新增默认资料后，如需重新构建这个练习用知识库，请先停止项目并删除该 JSON 文件，然后重新启动。
+向量会保存到本机 Redis Stack 中，而不是项目文件。首次切换 Redis 时会使用新的导入记录重新导入默认资料。旧的 `data/xiaoyi-vectors.json` 仅作为 SimpleVectorStore 阶段的本地备份保留。

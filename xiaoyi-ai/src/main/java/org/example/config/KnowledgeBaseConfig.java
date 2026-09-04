@@ -1,19 +1,14 @@
 package org.example.config;
 
 import org.springframework.ai.chat.client.advisor.QuestionAnswerAdvisor;
-import org.springframework.ai.embedding.EmbeddingModel;
 import org.springframework.ai.transformer.splitter.TokenTextSplitter;
 import org.springframework.ai.vectorstore.SearchRequest;
-import org.springframework.ai.vectorstore.SimpleVectorStore;
-import org.springframework.beans.factory.annotation.Value;
+import org.springframework.ai.vectorstore.VectorStore;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
-import java.io.File;
-import java.nio.file.Path;
-
 /**
- * Configures the local vector store and retrieval advisor for XiaoYi's knowledge base.
+ * Configures document splitting and retrieval for XiaoYi's Redis-backed knowledge base.
  */
 @Configuration
 public class KnowledgeBaseConfig {
@@ -30,18 +25,7 @@ public class KnowledgeBaseConfig {
     }
 
     @Bean
-    SimpleVectorStore knowledgeVectorStore(EmbeddingModel embeddingModel,
-                                           @Value("${xiaoyi.knowledge.store-path}") String storePath) {
-        SimpleVectorStore vectorStore = SimpleVectorStore.builder(embeddingModel).build();
-        File storeFile = Path.of(storePath).toFile();
-        if (storeFile.isFile() && storeFile.length() > 0) {
-            vectorStore.load(storeFile);
-        }
-        return vectorStore;
-    }
-
-    @Bean
-    QuestionAnswerAdvisor knowledgeBaseAdvisor(SimpleVectorStore knowledgeVectorStore) {
+    QuestionAnswerAdvisor knowledgeBaseAdvisor(VectorStore knowledgeVectorStore) {
         SearchRequest searchRequest = SearchRequest.builder()
                 .topK(4)
                 .similarityThreshold(0.65)

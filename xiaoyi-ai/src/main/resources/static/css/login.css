@@ -117,3 +117,181 @@ html.login-scroll-lock,body.login-scroll-lock{overflow:hidden}
   .brand-panel{overflow:hidden}
   .login-panel{overflow:visible}
 }
+/* Character-stage responsiveness: the original character artwork remains intact;
+   only the surrounding stage changes scale and position for each viewport. */
+@media (min-width:1101px){
+  .character-area{
+    display:grid;
+    place-items:end center;
+    min-height:0;
+    margin-top:clamp(22px,3.4vh,48px);
+    overflow:visible;
+  }
+  .character-area .character-stage{
+    position:relative;
+    left:auto;
+    bottom:auto;
+    transform:scale(.92);
+    transform-origin:center bottom;
+  }
+}
+
+/* Full-HD and wide monitors keep the scene prominent without crowding the copy. */
+@media (min-width:1500px){
+  .character-area .character-stage{transform:scale(.98)}
+}
+@media (min-width:1500px) and (max-height:900px){
+  .character-area .character-stage{transform:scale(.78)}
+}
+
+/* Typical laptop widths and shorter laptop screens. */
+@media (min-width:1101px) and (max-width:1499px){
+  .character-area .character-stage{transform:scale(.74)}
+}
+@media (min-width:1101px) and (max-width:1499px) and (max-height:800px){
+  .character-area .character-stage{transform:scale(.61)}
+}
+
+/* Tablet landscape: reserve the lower-left panel for the whole character group. */
+@media (min-width:821px) and (max-width:1100px){
+  .character-area{
+    display:grid;
+    place-items:end center;
+    min-height:0;
+    margin-top:16px;
+    overflow:visible;
+  }
+  .character-area .character-stage{
+    position:relative;
+    left:auto;
+    bottom:auto;
+    transform:scale(.54);
+    transform-origin:center bottom;
+  }
+}
+@media (min-width:821px) and (max-width:1100px) and (max-height:700px){
+  .character-area .character-stage{transform:scale(.46)}
+}
+
+/* Mobile stacks the brand and form; the characters stay contained in the brand area. */
+@media (max-width:820px){
+  .character-area{
+    display:grid;
+    place-items:end center;
+    min-height:250px;
+    margin-top:18px;
+    overflow:hidden;
+  }
+  .character-area .character-stage{
+    position:relative;
+    left:auto;
+    bottom:-9px;
+    transform:scale(.59);
+    transform-origin:center bottom;
+  }
+}
+@media (max-width:620px){
+  .character-area{min-height:224px;margin-top:14px}
+  .character-area .character-stage{transform:scale(.51)}
+}
+@media (max-width:420px){
+  .brand-panel{min-height:390px}
+  .character-area{min-height:196px;margin-top:10px}
+  .character-area .character-stage{bottom:-12px;transform:scale(.45)}
+}
+/* Extra-short desktop screens: reduce the entire stage together, never the individual characters. */
+@media (min-width:1500px) and (max-height:750px){
+  .character-area .character-stage{transform:scale(.66)}
+}
+@media (min-width:1101px) and (max-height:700px){
+  .character-area .character-stage{transform:scale(.54)}
+}
+/* 1366×768-class laptops: treat the left side as a complete vertical scene,
+   rather than letting the characters visually fall below the viewport. */
+@media (min-width:1101px) and (max-width:1499px) and (max-height:800px){
+  .brand-panel{
+    grid-template-rows:40px 206px minmax(0,1fr);
+    padding:28px clamp(40px,4vw,56px) 22px;
+  }
+  .title-zone{margin-top:43px}
+  .title-zone .greeting{margin-top:27px}
+  .character-area{
+    min-height:0;
+    margin-top:0;
+    padding-bottom:8px;
+  }
+  .character-area .character-stage{transform:scale(.72)}
+  .login-panel{padding:22px clamp(28px,3.2vw,48px)}
+  .login-card{
+    width:min(100%,510px);
+    padding:32px 36px 25px;
+    transform:none;
+  }
+  .top-slogan{top:20px;right:clamp(28px,3.2vw,48px)}
+}
+
+/* Keep a little breathing room under the scene on very short desktop windows. */
+@media (min-width:1101px) and (max-width:1499px) and (max-height:700px){
+  .brand-panel{grid-template-rows:38px 182px minmax(0,1fr);padding-top:22px;padding-bottom:16px}
+  .title-zone{margin-top:32px}
+  .title-zone .greeting{margin-top:18px}
+  .character-area{padding-bottom:4px}
+  .character-area .character-stage{transform:scale(.61)}
+  .login-card{padding:26px 30px 20px}
+}
+/* Give the original four-character group the same visual weight as the login card on common laptops. */
+@media (min-width:1101px) and (max-width:1499px) and (min-height:701px) and (max-height:800px){
+  .character-area .character-stage{transform:scale(.80)}
+}
+@media (min-width:1101px) and (max-width:1499px) and (max-height:700px){
+  .character-area .character-stage{transform:scale(.66)}
+}
+/* Premium visual pass: restrained palette, quieter decoration, and a subtle character stage. */
+:root{
+  --brand-primary:#5d61f4;
+  --brand-soft:#eeecff;
+  --brand-muted:#7e83ad;
+  --surface-glass:rgba(255,255,255,.68);
+}
+
+/* Keep one handwritten welcome message; the second one made the left panel feel busy. */
+@media (min-width:821px){.waiting{display:none}}
+
+/* A soft floor light makes the original characters feel placed in the scene, not pasted onto the page. */
+.character-area::before{
+  content:"";
+  position:absolute;
+  z-index:0;
+  left:50%;
+  bottom:clamp(4px,1.2vh,14px);
+  width:min(78%,470px);
+  height:clamp(38px,6vh,62px);
+  transform:translateX(-50%);
+  border-radius:50%;
+  background:radial-gradient(ellipse at center,rgba(116,105,248,.19) 0%,rgba(169,153,255,.10) 42%,transparent 74%);
+  filter:blur(9px);
+  pointer-events:none;
+}
+.character-area .character-stage{z-index:1}
+
+/* One calm purple system for interactive UI; character artwork itself is intentionally unchanged. */
+.wordmark-stroke{background:linear-gradient(90deg,#b9b3ff,#9995fa 55%,#c3b9ff)}
+.field{border-color:rgba(116,117,187,.16);background:rgba(251,251,255,.58)}
+.field:focus-within{border-color:rgba(93,97,244,.45);box-shadow:0 0 0 4px rgba(93,97,244,.08);background:rgba(255,255,255,.86)}
+.submit-button{background:linear-gradient(104deg,#666cf6 0%,#5a5fee 52%,#6a60ed 100%);box-shadow:0 12px 27px rgba(86,91,222,.22)}
+.submit-button:hover{box-shadow:0 16px 30px rgba(86,91,222,.27)}
+.login-card{background:linear-gradient(145deg,rgba(255,255,255,.77),rgba(249,250,255,.61));border-color:rgba(255,255,255,.84);box-shadow:0 28px 68px rgba(72,82,139,.13),inset 0 1px rgba(255,255,255,.86)}
+.welcome-note{color:#a6aed8}.welcome-note span{color:#aaa7ff}.top-slogan{color:#757e9d}
+
+/* A shorter laptop card has room to float instead of touching the screen edge. */
+@media (min-width:1101px) and (max-width:1499px) and (max-height:800px){
+  .login-card{padding:28px 36px 22px}
+  .welcome-note{font-size:13px}
+  .heading{margin:40px 0 30px}
+  .heading h1{font-size:38px}
+  .heading p{margin-top:11px;font-size:16px}
+  .field{height:54px;margin-top:13px;border-radius:16px}
+  .form-options{margin:18px 0 22px}
+  .submit-button{height:56px;font-size:17px}
+  .register-line{margin-top:30px;padding-top:20px}
+}

@@ -295,3 +295,135 @@ html.login-scroll-lock,body.login-scroll-lock{overflow:hidden}
   .submit-button{height:56px;font-size:17px}
   .register-line{margin-top:30px;padding-top:20px}
 }
+/* Final scene composition: one calm brand stage + one glass login surface. */
+.login-page{
+  background:
+    radial-gradient(ellipse 38% 52% at 75% 25%,rgba(205,214,255,.48),transparent 76%),
+    radial-gradient(ellipse 34% 38% at 38% 79%,rgba(255,218,191,.30),transparent 78%),
+    linear-gradient(118deg,#fffdf9 0%,#fbfaff 53%,#eef2ff 100%);
+}
+.brand-panel{
+  background:
+    radial-gradient(ellipse 88% 86% at -2% 8%,rgba(255,255,252,.98) 0 51%,rgba(255,253,249,.62) 72%,rgba(246,246,255,.26) 100%),
+    linear-gradient(145deg,#fffdfb,#f7f8ff);
+}
+.brand-panel::before{
+  content:"";
+  position:absolute;
+  z-index:0;
+  width:min(58vw,790px);
+  height:min(58vw,790px);
+  right:-31%;
+  top:-24%;
+  border-radius:50%;
+  background:radial-gradient(circle,rgba(209,214,255,.31),rgba(246,246,255,.07) 61%,transparent 72%);
+  pointer-events:none;
+}
+
+/* The product name remains the only expressive text on the left. */
+.greeting,.waiting{display:none!important}
+.brand-copy>p:last-child{color:#69728e;font-weight:500;letter-spacing:.025em}
+.wordmark{color:#263253;text-shadow:0 5px 18px rgba(78,82,142,.06)}
+.wordmark-stroke{background:linear-gradient(90deg,#c3bdff 0%,#9d9af8 48%,#c7c0ff 100%);box-shadow:0 3px 12px rgba(129,122,245,.11)}
+
+/* Stage: floor light is intentionally broad and subtle, with the original character group above it. */
+.character-area::before{
+  width:min(84%,520px);
+  height:clamp(44px,6.5vh,70px);
+  bottom:clamp(8px,1.8vh,20px);
+  background:radial-gradient(ellipse at center,rgba(103,93,231,.22) 0%,rgba(163,150,255,.13) 40%,rgba(255,220,198,.08) 61%,transparent 76%);
+  filter:blur(13px);
+}
+.character-area .character-stage{z-index:2;filter:drop-shadow(0 14px 16px rgba(45,50,96,.08))}
+
+/* The card becomes a quiet translucent surface instead of a solid floating box. */
+.login-card{
+  border:1px solid rgba(255,255,255,.93);
+  border-radius:32px;
+  background:linear-gradient(145deg,rgba(255,255,255,.76),rgba(248,249,255,.58));
+  box-shadow:0 26px 68px rgba(69,79,133,.13),inset 0 1px 0 rgba(255,255,255,.9);
+  backdrop-filter:blur(20px) saturate(1.05);
+}
+.heading h1{color:#27365e;letter-spacing:.01em}.heading p{color:#73809e}
+.field{background:rgba(255,255,255,.45);border-color:rgba(115,123,180,.15)}
+.text-action{color:#6068ed}.remember{color:#64708e}.register-line{color:#77819c}
+
+@media (min-width:1101px){
+  .login-page{grid-template-columns:minmax(0,1.13fr) minmax(0,.87fr)}
+  .brand-panel{
+    grid-template-rows:42px 194px minmax(0,1fr) auto;
+    padding:clamp(32px,3.6vw,64px) clamp(52px,5vw,88px) clamp(28px,3.8vh,48px);
+  }
+  .title-zone{margin-top:clamp(46px,6.6vh,78px)}
+  .character-area{margin-top:clamp(12px,2.4vh,30px);padding-bottom:clamp(10px,1.6vh,18px)}
+  .login-panel{padding:clamp(62px,8vh,105px) clamp(34px,4vw,70px)}
+  .login-card{width:min(100%,590px);transform:none}
+}
+
+/* Large screens: scale the entire stage, not individual characters. */
+@media (min-width:1500px) and (min-height:901px){
+  .character-area .character-stage{transform:scale(1.10)}
+  .login-card{width:min(100%,610px)}
+}
+
+/* Standard 13–15 inch laptop baseline. */
+@media (min-width:1101px) and (max-width:1499px) and (min-height:701px) and (max-height:800px){
+  .brand-panel{grid-template-rows:40px 188px minmax(0,1fr);padding:28px clamp(42px,4vw,56px) 24px}
+  .title-zone{margin-top:40px}
+  .character-area{margin-top:0;padding-bottom:10px}
+  .character-area .character-stage{transform:scale(.84)}
+  .login-panel{padding:24px clamp(30px,3.4vw,50px)}
+  .login-card{width:min(100%,520px);padding:30px 38px 24px}
+}
+
+@media (min-width:1101px) and (max-width:1499px) and (max-height:700px){
+  .brand-panel{grid-template-rows:38px 170px minmax(0,1fr);padding-top:20px;padding-bottom:16px}
+  .title-zone{margin-top:30px}
+  .character-area{padding-bottom:4px}
+  .character-area .character-stage{transform:scale(.67)}
+  .login-card{padding:25px 30px 20px}
+}
+
+@media (max-width:1100px){
+  .brand-panel::before{right:-46%;top:-34%;width:680px;height:680px}
+  .character-area::before{width:min(88%,470px)}
+}
+/* Compact mobile composition: the stage is positioned inside its own reserved area,
+   so the fixed-size source artwork cannot stretch the first screen. */
+@media (max-width:620px){
+  .brand-panel{
+    min-height:350px;
+    grid-template-rows:auto auto minmax(156px,1fr);
+    padding:23px 26px 0;
+  }
+  .title-zone{margin-top:27px}
+  .brand-copy>p:last-child{margin-top:9px;font-size:15px}
+  .character-area{
+    position:relative;
+    min-height:156px;
+    margin-top:8px;
+    overflow:hidden;
+  }
+  .character-area .character-stage{
+    position:absolute;
+    left:50%;
+    bottom:-11px;
+    transform:translateX(-50%) scale(.46);
+  }
+  .login-panel{padding:25px 16px 28px}
+  .login-card{padding:24px 22px 20px;border-radius:25px}
+  .welcome-note{font-size:12px}
+  .heading{margin:26px 0 24px}
+  .heading h1{font-size:32px}
+  .heading p{margin-top:9px;font-size:14px}
+  .field{height:50px;margin-top:12px;border-radius:14px}
+  .form-options{margin:16px 0 19px;font-size:14px}
+  .remember{font-size:14px}.remember span{width:21px;height:21px}
+  .submit-button{height:52px;font-size:16px}
+  .register-line{margin-top:25px;padding-top:17px;font-size:14px}
+}
+@media (max-width:420px){
+  .brand-panel{min-height:337px;padding-left:22px;padding-right:22px}
+  .character-area{min-height:148px}
+  .character-area .character-stage{transform:translateX(-50%) scale(.43)}
+}

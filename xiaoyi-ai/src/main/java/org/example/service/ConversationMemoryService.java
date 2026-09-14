@@ -69,6 +69,5 @@ public class ConversationMemoryService {
             case "assistant" -> Optional.of(new AssistantMessage(message.getContent()));
             default -> Optional.empty();
         };
-
     }
 }

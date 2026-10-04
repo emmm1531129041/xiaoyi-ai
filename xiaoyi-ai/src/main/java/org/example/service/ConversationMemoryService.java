@@ -57,7 +57,6 @@ public class ConversationMemoryService {
             }
             restoredConversationIds.add(conversationId);
         }
-
     }
 
     /** Clears only the restore marker; ConversationService clears the actual ChatMemory. */

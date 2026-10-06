@@ -34,6 +34,7 @@ public class ConversationMemoryService {
     }
 
     @Transactional(readOnly = true)
+    //第一次使用某个会话时，把 MySQL 最近 10 条历史消息恢复进 Spring AI 的 ChatMemory;恢复过就直接跳过。
     public void restoreIfNeeded(String conversationId) {
         if (restoredConversationIds.contains(conversationId)) {
             return;

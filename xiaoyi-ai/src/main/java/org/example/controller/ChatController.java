@@ -65,7 +65,8 @@ public class ChatController {
 
         String content = chatClient.prompt()
                 .user(message)
-                .advisors(advisor -> advisor.param(AbstractChatMemoryAdvisor.CHAT_MEMORY_CONVERSATION_ID_KEY,
+                .advisors(advisor -> advisor.param(
+                        AbstractChatMemoryAdvisor.CHAT_MEMORY_CONVERSATION_ID_KEY,
                         conversationId))
                 .call()
                 .content();
@@ -91,6 +92,10 @@ public class ChatController {
                 .stream()
                 .content()
                 .doOnNext(assistantResponse::append)
-                .doOnComplete(() -> conversationService.addAssistantMessage(conversationId, assistantResponse.toString()));
+                .doOnComplete(() ->
+                        conversationService.addAssistantMessage(
+                                conversationId, assistantResponse.toString()
+                        )
+                );
     }
 }

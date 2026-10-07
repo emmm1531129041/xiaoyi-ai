@@ -36,7 +36,10 @@ public class ChatClientConfig {
                 .defaultSystem(SYSTEM_PROMPT)
                 .defaultTools(weatherService, webSearchService)
                 .defaultAdvisors(
-                        new MessageChatMemoryAdvisor(chatMemory, DEFAULT_CONVERSATION_ID, CHAT_HISTORY_WINDOW_SIZE),
+                        new MessageChatMemoryAdvisor(
+                                chatMemory,
+                                DEFAULT_CONVERSATION_ID,
+                                CHAT_HISTORY_WINDOW_SIZE),
                         knowledgeBaseAdvisor,
                         new SimpleLoggerAdvisor())
                 .build();

@@ -105,7 +105,9 @@ public class ConversationService {
         List<ConversationAttachmentEntity> storedAttachments = new java.util.ArrayList<>();
         try {
             for (MultipartFile file : files) {
-                storedAttachments.add(attachmentStorageService.store(conversationId, message.getId(), file));
+                storedAttachments.add(attachmentStorageService.store(
+                        conversationId, message.getId(), file
+                ));
             }
         } catch (IOException | RuntimeException exception) {
             attachmentStorageService.deleteStoredFiles(storedAttachments);

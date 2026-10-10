@@ -64,7 +64,8 @@ public class AttachmentStorageService {
         }
 
         try {
-            return attachmentRepository.save(new ConversationAttachmentEntity(
+            return attachmentRepository.save(
+                    new ConversationAttachmentEntity(
                     conversationId, messageId, originalName, storedName, target.toString(),
                     StringUtils.hasText(file.getContentType()) ? file.getContentType() : "application/octet-stream",
                     file.getSize(), Instant.now()));
@@ -92,12 +93,15 @@ public class AttachmentStorageService {
 
     public StoredAttachment load(Long attachmentId) {
         ConversationAttachmentEntity attachment = attachmentRepository.findById(attachmentId)
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "附件不存在"));
+                .orElseThrow(() ->
+                        new ResponseStatusException(
+                                HttpStatus.NOT_FOUND, "附件不存在"));
         Path file = Paths.get(attachment.getFilePath()).toAbsolutePath().normalize();
         try {
             verifyInsideUploadDirectory(file);
             if (!Files.isRegularFile(file)) {
-                throw new ResponseStatusException(HttpStatus.NOT_FOUND, "附件文件不存在");
+                throw new ResponseStatusException(
+                        HttpStatus.NOT_FOUND, "附件文件不存在");
             }
         } catch (IllegalArgumentException exception) {
             throw new ResponseStatusException(HttpStatus.NOT_FOUND, "附件文件不存在");

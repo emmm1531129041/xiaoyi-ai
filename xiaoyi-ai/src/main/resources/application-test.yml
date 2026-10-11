@@ -1,0 +1,9 @@
+spring:
+  datasource:
+    url: jdbc:mysql://localhost:3306/xiaoyi_ai_test?serverTimezone=Asia/Shanghai
+    username: ${MYSQL_TEST_USERNAME:root}
+    password: ${MYSQL_TEST_PASSWORD}
+
+  jpa:
+    hibernate:
+      ddl-auto: update

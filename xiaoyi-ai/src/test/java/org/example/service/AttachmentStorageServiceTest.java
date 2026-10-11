@@ -10,9 +10,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.List;
 
-import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
@@ -42,4 +40,29 @@ class AttachmentStorageServiceTest {
         Files.delete(storedFile);
         assertDoesNotThrow(() -> service.deleteStoredFiles(List.of(attachment)));
     }
+
+    @Test
+    void deletesFileWhenDatabaseSaveFails() throws Exception {
+        ConversationAttachmentRepository repository =
+                mock(ConversationAttachmentRepository.class);
+
+        when(repository.save(any(ConversationAttachmentEntity.class)))
+                .thenThrow(new RuntimeException("模拟数据库失败"));
+
+        AttachmentStorageService service =
+                new AttachmentStorageService(
+                        repository, temporaryDirectory.toString());
+
+        MockMultipartFile file = new MockMultipartFile(
+                "file", "cat.png", "image/png", new byte[]{1, 2, 3});
+
+        assertThrows(RuntimeException.class,
+                () -> service.store("conversation-1", 10L, file));
+
+        try (var files = Files.list(temporaryDirectory)) {
+            assertEquals(0, files.count());
+        }
+    }
+
+
 }

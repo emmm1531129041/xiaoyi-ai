@@ -60,9 +60,12 @@ public class ChatController {
     public ChatResponse chat(@RequestParam String message,
                              @RequestParam(defaultValue = "default") String conversationId) {
         conversationService.ensureConversation(conversationId);
+        //重启后首次处理该会话请求，从MYSQL恢复最近10条消息
         conversationMemoryService.restoreIfNeeded(conversationId);
+        //保存用户消息
         conversationService.addUserMessage(conversationId, message);
 
+        //调用大模型获取回复
         String content = chatClient.prompt()
                 .user(message)
                 .advisors(advisor -> advisor.param(
@@ -70,6 +73,7 @@ public class ChatController {
                         conversationId))
                 .call()
                 .content();
+        //保存AI回复
         conversationService.addAssistantMessage(conversationId, content);
         return new ChatResponse(content);
     }

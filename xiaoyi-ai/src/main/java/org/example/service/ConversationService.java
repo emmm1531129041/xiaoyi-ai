@@ -89,6 +89,7 @@ public class ConversationService {
                 .toList();
     }
 
+
     @Transactional
     public void addUserMessage(String conversationId, String content) {
         ConversationEntity conversation = getOrCreate(conversationId);

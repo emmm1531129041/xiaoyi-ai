@@ -101,5 +101,6 @@ public class ChatController {
                                 conversationId, assistantResponse.toString()
                         )
                 );
+
     }
 }

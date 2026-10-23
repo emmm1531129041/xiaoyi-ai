@@ -2,6 +2,8 @@ package org.example.controller;
 
 import org.example.service.ConversationService;
 import org.example.service.ConversationMemoryService;
+import org.example.service.ConversationGenerationCoordinator;
+import org.example.service.ConversationGenerationFinalizer;
 import org.example.service.DocumentAnalysisService;
 import org.springframework.ai.chat.client.ChatClient;
 import org.springframework.ai.chat.client.advisor.AbstractChatMemoryAdvisor;
@@ -15,6 +17,7 @@ import reactor.core.publisher.Flux;
 
 import java.io.IOException;
 import java.util.List;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 /** Analyzes uploaded documents without adding them to the knowledge base. */
 @RestController
@@ -25,48 +28,78 @@ public class DocumentAnalysisController {
     private final ChatClient chatClient;
     private final ConversationService conversationService;
     private final ConversationMemoryService conversationMemoryService;
+    private final ConversationGenerationCoordinator generationCoordinator;
+    private final ConversationGenerationFinalizer generationFinalizer;
 
     public DocumentAnalysisController(DocumentAnalysisService documentAnalysisService,
                                       ChatClient chatClient,
                                       ConversationService conversationService,
-                                      ConversationMemoryService conversationMemoryService) {
+                                      ConversationMemoryService conversationMemoryService,
+                                      ConversationGenerationCoordinator generationCoordinator,
+                                      ConversationGenerationFinalizer generationFinalizer) {
         this.documentAnalysisService = documentAnalysisService;
         this.chatClient = chatClient;
         this.conversationService = conversationService;
         this.conversationMemoryService = conversationMemoryService;
+        this.generationCoordinator = generationCoordinator;
+        this.generationFinalizer = generationFinalizer;
     }
 
     @PostMapping(value = "/analyze", consumes = MediaType.MULTIPART_FORM_DATA_VALUE,
             produces = MediaType.TEXT_EVENT_STREAM_VALUE + ";charset=UTF-8")
     public Flux<String> analyze(@RequestParam("file") List<MultipartFile> files,
                                 @RequestParam(value = "prompt", required = false) String prompt,
-                                @RequestParam(defaultValue = "default") String conversationId) throws IOException {
-        List<DocumentAnalysisService.ExtractedDocument> documents = documentAnalysisService.extract(files);
-        String question = prompt == null || prompt.isBlank() ? "请概括这些文档的重点" : prompt.trim();
-        conversationService.ensureConversation(conversationId);
-        conversationMemoryService.restoreIfNeeded(conversationId);
-        conversationService.addUserMessageWithAttachments(conversationId, "[文档分析] " + question, files);
+                                @RequestParam(defaultValue = "default") String conversationId) {
+        ConversationGenerationCoordinator.Generation generation = generationCoordinator.begin(conversationId);
+        AtomicBoolean modelStreamStarted = new AtomicBoolean();
+        return generation.awaitPreviousTermination()
+                .thenMany(Flux.defer(() -> {
+                    if (generation.isCancelled()) {
+                        return Flux.<String>empty();
+                    }
+                    try {
+                        List<DocumentAnalysisService.ExtractedDocument> documents = documentAnalysisService.extract(files);
+                        String question = prompt == null || prompt.isBlank() ? "请概括这些文档的重点" : prompt.trim();
+                        conversationService.ensureConversation(conversationId);
+                        conversationMemoryService.reload(conversationId);
+                        conversationService.addUserMessageWithAttachments(conversationId, "[文档分析] " + question, files);
 
-        String documentContext = documents.stream()
-                .map(document -> "文件名：%s%n%s%n---------------------".formatted(document.filename(), document.content()))
-                .collect(java.util.stream.Collectors.joining(System.lineSeparator()));
-        boolean truncated = documents.stream().anyMatch(DocumentAnalysisService.ExtractedDocument::truncated);
-        String context = """
-                下面是用户刚刚上传的文档内容，仅用于回答本次问题。
-                %s
-                ---------------------
-                %s
-                请根据文档内容回答用户问题；若内容不够，请明确说明。
-                """.formatted(truncated ? "注意：至少一份文档过长，仅提取了前 30000 个字符。" : "", documentContext);
-        StringBuilder assistantResponse = new StringBuilder();
-        return chatClient.prompt()
-                .system(context)
-                .user(question)
-                .advisors(advisor -> advisor.param(AbstractChatMemoryAdvisor.CHAT_MEMORY_CONVERSATION_ID_KEY, conversationId))
-                .stream()
-                .content()
-                .doOnNext(assistantResponse::append)
-                .doOnComplete(() -> conversationService.addAssistantMessage(conversationId, assistantResponse.toString()));
+                        String documentContext = documents.stream()
+                                .map(document -> "文件名：%s%n%s%n---------------------".formatted(document.filename(), document.content()))
+                                .collect(java.util.stream.Collectors.joining(System.lineSeparator()));
+                        boolean truncated = documents.stream().anyMatch(DocumentAnalysisService.ExtractedDocument::truncated);
+                        String context = """
+                                下面是用户刚刚上传的文档内容，仅用于回答本次问题。
+                                %s
+                                ---------------------
+                                %s
+                                请根据文档内容回答用户问题；若内容不够，请明确说明。
+                                """.formatted(truncated ? "注意：至少一份文档过长，仅提取了前 30000 个字符。" : "", documentContext);
+                        StringBuilder assistantResponse = new StringBuilder();
+                        modelStreamStarted.set(true);
+                        return chatClient.prompt()
+                                .system(context)
+                                .user(question)
+                                .advisors(advisor -> advisor.param(AbstractChatMemoryAdvisor.CHAT_MEMORY_CONVERSATION_ID_KEY, conversationId))
+                                .stream()
+                                .content()
+                                .takeUntilOther(generation.cancellation())
+                                .doOnNext(assistantResponse::append)
+                                .doOnComplete(() -> {
+                                    if (!generation.isCancelled()) {
+                                        conversationService.addAssistantMessage(conversationId, assistantResponse.toString());
+                                    }
+                                })
+                                .doFinally(signalType -> generationFinalizer.finish(conversationId, generation));
+                    } catch (IOException exception) {
+                        return Flux.<String>error(exception);
+                    }
+                }))
+                .doFinally(signalType -> {
+                    if (!modelStreamStarted.get()) {
+                        generationCoordinator.finish(generation);
+                    }
+                });
 
     }
 }

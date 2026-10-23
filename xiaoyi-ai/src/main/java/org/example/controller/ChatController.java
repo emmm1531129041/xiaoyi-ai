@@ -1,14 +1,18 @@
 package org.example.controller;
 
 import java.util.List;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 import org.example.dto.ChatResponse;
 import org.example.dto.ConversationMessage;
 import org.example.dto.ConversationSummary;
 import org.example.service.ConversationService;
 import org.example.service.ConversationMemoryService;
+import org.example.service.ConversationGenerationCoordinator;
+import org.example.service.ConversationGenerationFinalizer;
 import org.springframework.ai.chat.client.ChatClient;
 import org.springframework.ai.chat.client.advisor.AbstractChatMemoryAdvisor;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -17,7 +21,12 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.server.ResponseStatusException;
 import reactor.core.publisher.Flux;
+import reactor.core.publisher.Mono;
+
+import java.time.Duration;
+import java.util.concurrent.TimeoutException;
 
 /**
  * Exposes the application chat and conversation-history endpoints.
@@ -29,12 +38,18 @@ public class ChatController {
     private final ChatClient chatClient;
     private final ConversationService conversationService;
     private final ConversationMemoryService conversationMemoryService;
+    private final ConversationGenerationCoordinator generationCoordinator;
+    private final ConversationGenerationFinalizer generationFinalizer;
 
     public ChatController(ChatClient chatClient, ConversationService conversationService,
-                          ConversationMemoryService conversationMemoryService) {
+                          ConversationMemoryService conversationMemoryService,
+                          ConversationGenerationCoordinator generationCoordinator,
+                          ConversationGenerationFinalizer generationFinalizer) {
         this.chatClient = chatClient;
         this.conversationService = conversationService;
         this.conversationMemoryService = conversationMemoryService;
+        this.generationCoordinator = generationCoordinator;
+        this.generationFinalizer = generationFinalizer;
     }
     @PostMapping("/conversations")
     public ConversationSummary createConversation() {
@@ -52,8 +67,12 @@ public class ChatController {
     }
 
     @DeleteMapping("/conversations/{conversationId}")
-    public void deleteConversation(@PathVariable String conversationId) {
-        conversationService.deleteConversation(conversationId);
+    public Mono<Void> deleteConversation(@PathVariable String conversationId) {
+        return generationCoordinator.cancelAndAwait(conversationId)
+                .timeout(Duration.ofSeconds(5))
+                .onErrorMap(TimeoutException.class, exception ->
+                        new ResponseStatusException(HttpStatus.CONFLICT, "会话生成任务未能及时停止，请稍后重试删除", exception))
+                .then(Mono.<Void>fromRunnable(() -> conversationService.deleteConversation(conversationId)));
     }
 
     @GetMapping
@@ -84,23 +103,47 @@ public class ChatController {
     @GetMapping(value = "/stream", produces = MediaType.TEXT_EVENT_STREAM_VALUE + ";charset=UTF-8")
     public Flux<String> streamChat(@RequestParam String message,
                                    @RequestParam(defaultValue = "default") String conversationId) {
-        conversationService.ensureConversation(conversationId);
-        conversationMemoryService.restoreIfNeeded(conversationId);
-        conversationService.addUserMessage(conversationId, message);
+        ConversationGenerationCoordinator.Generation generation = generationCoordinator.begin(conversationId);
+        AtomicBoolean modelStreamStarted = new AtomicBoolean();
+        return generation.awaitPreviousTermination()
+                .thenMany(Flux.defer(() -> {
+                    // A still newer browser request arrived while this one was waiting.
+                    if (generation.isCancelled()) {
+                        return Flux.<String>empty();
+                    }
 
-        StringBuilder assistantResponse = new StringBuilder();
-        return chatClient.prompt()
-                .user(message)
-                .advisors(advisor -> advisor.param(AbstractChatMemoryAdvisor.CHAT_MEMORY_CONVERSATION_ID_KEY,
-                        conversationId))
-                .stream()
-                .content()
-                .doOnNext(assistantResponse::append)
-                .doOnComplete(() ->
-                        conversationService.addAssistantMessage(
-                                conversationId, assistantResponse.toString()
-                        )
-                );
+                    conversationService.ensureConversation(conversationId);
+                    // The preceding stream may have been cancelled after its advisor
+                    // wrote to memory. Rebuild from MySQL before adding this prompt.
+                    conversationMemoryService.reload(conversationId);
+                    conversationService.addUserMessage(conversationId, message);
+                    modelStreamStarted.set(true);
+
+                    StringBuilder assistantResponse = new StringBuilder();
+                    return chatClient.prompt()
+                            .user(message)
+                            .advisors(advisor -> advisor.param(
+                                    AbstractChatMemoryAdvisor.CHAT_MEMORY_CONVERSATION_ID_KEY, conversationId))
+                            .stream()
+                            .content()
+                            .takeUntilOther(generation.cancellation())
+                            .doOnNext(assistantResponse::append)
+                            .doOnComplete(() -> {
+                                if (!generation.isCancelled()) {
+                                    conversationService.addAssistantMessage(conversationId, assistantResponse.toString());
+                                }
+                            })
+                            .doFinally(signalType -> {
+                                generationFinalizer.finish(conversationId, generation);
+                            });
+                }))
+                // If the browser disconnects while this request is waiting for
+                // an older stream, there is no inner stream to run its cleanup.
+                .doFinally(signalType -> {
+                    if (!modelStreamStarted.get()) {
+                        generationCoordinator.finish(generation);
+                    }
+                });
 
     }
 }

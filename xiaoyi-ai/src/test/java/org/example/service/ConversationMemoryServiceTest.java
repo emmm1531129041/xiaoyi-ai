@@ -45,4 +45,21 @@ class ConversationMemoryServiceTest {
         assertInstanceOf(AssistantMessage.class, messages.getValue().get(1));
         assertEquals("我叫张童", ((UserMessage) messages.getValue().get(0)).getText());
     }
+
+    @Test
+    void reloadReplacesRuntimeMemoryWithPersistedMessages() {
+        ChatMemory chatMemory = mock(ChatMemory.class);
+        ConversationMessageRepository messageRepository = mock(ConversationMessageRepository.class);
+        when(messageRepository.findTop10ByConversationIdOrderByCreatedAtDesc("conversation-1"))
+                .thenReturn(List.of(new ConversationMessageEntity(
+                        "conversation-1", "user", "新的调整要求", Instant.parse("2026-10-23T08:00:00Z"))));
+
+        ConversationMemoryService service = new ConversationMemoryService(chatMemory, messageRepository);
+        service.reload("conversation-1");
+
+        ArgumentCaptor<List<Message>> messages = ArgumentCaptor.forClass(List.class);
+        verify(chatMemory).clear("conversation-1");
+        verify(chatMemory).add(eq("conversation-1"), messages.capture());
+        assertEquals("新的调整要求", ((UserMessage) messages.getValue().get(0)).getText());
+    }
 }

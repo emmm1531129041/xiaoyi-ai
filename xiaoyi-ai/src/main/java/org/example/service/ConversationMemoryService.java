@@ -60,6 +60,28 @@ public class ConversationMemoryService {
         }
     }
 
+    /**
+     * Rebuilds the runtime window from persisted, successful messages. This is
+     * used after a stream is cancelled or fails so an advisor cannot retain a
+     * partial assistant response in the in-memory conversation.
+     */
+    @Transactional(readOnly = true)
+    public void reload(String conversationId) {
+        List<Message> recentMessages = messageRepository
+                .findTop10ByConversationIdOrderByCreatedAtDesc(conversationId)
+                .stream()
+                .sorted(Comparator.comparing(ConversationMessageEntity::getCreatedAt))
+                .map(this::toChatMessage)
+                .flatMap(Optional::stream)
+                .toList();
+
+        chatMemory.clear(conversationId);
+        if (!recentMessages.isEmpty()) {
+            chatMemory.add(conversationId, recentMessages);
+        }
+        restoredConversationIds.add(conversationId);
+    }
+
     /** Clears only the restore marker; ConversationService clears the actual ChatMemory. */
     public void forget(String conversationId) {
         restoredConversationIds.remove(conversationId);

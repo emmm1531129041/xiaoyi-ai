@@ -8,6 +8,7 @@ const form = document.querySelector('#chat-form');
     let pendingAttachments = [];
     const messagePreviewUrls = new Set();
     const sendButton = document.querySelector('#send-button');
+    const stopGenerationButton = document.querySelector('#stop-generation-button');
     const newChatButton = document.querySelector('#new-chat');
     const conversationList = document.querySelector('#conversation-list');
     const modeButtons = document.querySelectorAll('.mode-button');
@@ -98,6 +99,8 @@ const form = document.querySelector('#chat-form');
     }
     let activeConversationId = null;
     let activeMode = 'chat';
+    let activeChatRequest = null;
+    let chatRequestSequence = 0;
     const conversationScrollStorageKey = 'xiaoyi-conversation-scroll-positions';
     const conversationScrollPositions = (() => {
         try {
@@ -518,6 +521,7 @@ const form = document.querySelector('#chat-form');
 
     async function selectConversation(conversationId) {
         if (conversationId === activeConversationId) return;
+        stopActiveChatGeneration();
         rememberConversationScrollPosition();
         activeConversationId = conversationId;
         localStorage.setItem('xiaoyi-active-conversation', conversationId);
@@ -528,6 +532,7 @@ const form = document.querySelector('#chat-form');
     }
 
     async function createConversation() {
+        stopActiveChatGeneration();
         rememberConversationScrollPosition();
         const response = await fetch('/chat/conversations', { method: 'POST' });
         const conversation = await response.json();
@@ -539,7 +544,7 @@ const form = document.querySelector('#chat-form');
     }
 
     async function deleteConversation(conversationId) {
-        if (sendButton.disabled) return;
+        if (conversationId === activeConversationId) stopActiveChatGeneration();
         const response = await fetch(`/chat/conversations/${encodeURIComponent(conversationId)}`, { method: 'DELETE' });
         if (!response.ok) {
             alert('删除失败，请稍后重试。');
@@ -560,6 +565,7 @@ const form = document.querySelector('#chat-form');
     }
 
     function setMode(mode) {
+        if (mode !== 'chat') stopActiveChatGeneration();
         activeMode = mode;
         const imageMode = mode === 'image';
         document.body.classList.toggle('image-mode', imageMode);
@@ -572,7 +578,21 @@ const form = document.querySelector('#chat-form');
         sendButton.setAttribute('aria-label', imageMode ? '生成图片' : '发送消息');
         sendButton.title = imageMode ? '生成图片' : '发送消息';
         modeButtons.forEach(button => button.classList.toggle('active', button.dataset.mode === mode));
+        setChatGenerationState(activeChatRequest);
         input.focus();
+    }
+
+    function setChatGenerationState(request) {
+        const generating = Boolean(request);
+        stopGenerationButton.classList.toggle('visible', generating && activeMode === 'chat');
+        stopGenerationButton.disabled = !generating;
+    }
+
+    function stopActiveChatGeneration() {
+        if (activeChatRequest && !activeChatRequest.controller.signal.aborted) {
+            activeChatRequest.controller.abort();
+            stopGenerationButton.disabled = true;
+        }
     }
 
 
@@ -811,14 +831,19 @@ const form = document.querySelector('#chat-form');
             return;
         }
         if (attachedFiles.length) {
+            stopActiveChatGeneration();
             await analyzeAttachment(question);
             return;
         }
         if (messages.querySelector('.empty')) messages.replaceChildren();
+        // A new instruction supersedes the visible stream. Its finally handler is
+        // guarded by request identity, so it cannot reset this newer request.
+        stopActiveChatGeneration();
+        const request = { id: ++chatRequestSequence, controller: new AbortController() };
+        activeChatRequest = request;
+        setChatGenerationState(request);
         addMessage('user', question);
         input.value = '';
-        input.disabled = true;
-        sendButton.disabled = true;
         stopCurrentSpeech();
         const answer = addMessage('assistant');
         showSpinner(answer);
@@ -826,7 +851,9 @@ const form = document.querySelector('#chat-form');
         let answerText = null;
 
         try {
-            const response = await fetch(`/chat/stream?message=${encodeURIComponent(question)}&conversationId=${encodeURIComponent(activeConversationId)}`);
+            const response = await fetch(`/chat/stream?message=${encodeURIComponent(question)}&conversationId=${encodeURIComponent(activeConversationId)}`, {
+                signal: request.controller.signal
+            });
             if (!response.ok || !response.body) throw new Error(`请求失败：${response.status}`);
             const reader = response.body.getReader();
             const decoder = new TextDecoder();
@@ -836,6 +863,7 @@ const form = document.querySelector('#chat-form');
                 if (value) buffer += decoder.decode(value, { stream: true });
                 if (done) buffer += decoder.decode();
                 buffer = appendSseEvents(buffer, (content) => {
+                    if (activeChatRequest !== request) return;
                     if (!receivedContent) {
                         answer.classList.remove('thinking');
                         answer.replaceChildren();
@@ -850,15 +878,21 @@ const form = document.querySelector('#chat-form');
             }
         } catch (error) {
             answer.classList.remove('thinking');
-            answer.textContent = `抱歉，暂时无法获取回答：${error.message}`;
+            answer.textContent = error.name === 'AbortError'
+                ? '已停止生成。'
+                : `抱歉，暂时无法获取回答：${error.message}`;
         } finally {
             if (receivedContent) addAssistantActions(answer, () => answerText.dataset.raw || '');
-            input.disabled = false;
-            sendButton.disabled = false;
-            input.focus();
-            await refreshConversations();
+            if (activeChatRequest === request) {
+                activeChatRequest = null;
+                setChatGenerationState(null);
+                input.focus();
+                await refreshConversations();
+            }
         }
     });
+
+    stopGenerationButton.addEventListener('click', stopActiveChatGeneration);
 
     (async () => {
         renderImageEmpty();

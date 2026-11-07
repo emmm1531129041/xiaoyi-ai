@@ -49,4 +49,5 @@ public class ChatClientConfig {
                         new SimpleLoggerAdvisor())
                 .build();
     }
+    
 }

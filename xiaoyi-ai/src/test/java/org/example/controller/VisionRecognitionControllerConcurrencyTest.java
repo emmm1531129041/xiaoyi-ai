@@ -6,6 +6,7 @@ import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
+import java.io.IOException;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicBoolean;
 
@@ -22,7 +23,7 @@ import reactor.core.publisher.Flux;
 class VisionRecognitionControllerConcurrencyTest {
 
     @Test
-    void aNewAttachmentGenerationCancelsTheActiveGenerationForTheSameConversation() {
+    void aNewAttachmentGenerationCancelsTheActiveGenerationForTheSameConversation() throws IOException {
         VisionRecognitionService visionService = mock(VisionRecognitionService.class);
         when(visionService.stream(anyList(), anyString())).thenReturn(Flux.never());
         ConversationMemoryService memoryService = mock(ConversationMemoryService.class);

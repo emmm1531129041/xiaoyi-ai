@@ -53,3 +53,6 @@ logs/
 
 # Ignore local IntelliJ IDEA workspace files
 .idea/
+
+# Docker 环境变量配置
+.env.docker

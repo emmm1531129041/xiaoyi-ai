@@ -58,7 +58,7 @@ logging:
 
 xiaoyi:
   storage:
-    upload-dir: E:/my-first-web/picture
+    upload-dir: ${UPLOAD_DIR:E:/my-first-web/picture}
   dashscope:
     api-key: ${AI_DASHSCOPE_API_KEY}
   knowledge:
